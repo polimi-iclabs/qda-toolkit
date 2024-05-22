@@ -4,6 +4,24 @@ This repository contains the `qda` module, a Python package that provides functi
 
 ## Features
 
+The QDA module contains several classes, each with its own functionality:
+
+1. **ControlCharts**: This class provides several methods for creating control charts. Here are some of the key methods:
+    - `XbarS(original_df, K = 3, sigma = None, subset_size = None, plotit = True)`: This method creates an X-bar and S control chart. It takes in a dataframe, a constant K, an optional sigma value, an optional subset size, and a boolean to determine if the chart should be plotted.
+    - `IMR(original_df, col_name, K = 3, subset_size = None, run_rules = False, plotit = True)`: This method creates an Individual and Moving Range (IMR) control chart. It takes in a dataframe, a column name, a constant K, an optional subset size, a boolean to determine if run rules should be applied, and a boolean to determine if the chart should be plotted.
+    - `XbarR(original_df, K = 3, subset_size = None, plotit = True)`: This method creates an X-bar and R control chart. It takes in a dataframe, a constant K, an optional subset size, and a boolean to determine if the chart should be plotted.
+
+Each of these methods returns a dataframe with the calculated control limits and plots the control chart if `plotit` is set to `True`.
+
+2. **constants**: This class provides static methods to get various statistical constants such as `d2`, `d3`, `c4`, `A2`, `D3`, and `D4`. These constants are used by the `ControlCharts` class to design the control charts.
+
+3. **StepwiseRegression**: This class provides methods for performing stepwise regression, a method of fitting regression models in which the choice of predictive variables is carried out by an automatic procedure. The class provides methods for fitting the model (`fit`), forward selection (`forward_selection`), backward elimination (`backward_elimination`), and summarizing the model (`SWsummary`).
+
+4. **Summary**: This class provides a method for summarizing the results of an ARIMA model in a user-friendly way that mimics the output of Minitab. The `ARIMA` method prints the final estimates of parameters, the residual sum of squares, and Ljung-Box Chi-Square Statistics.
+
+
+## Features
+
 The module is made by two main classes: 
 
 1. **ControlCharts**: it contains the functions to create the most popular control charts for statistical process control. It includes Shewart's control charts for samples (Xbar-R, Xbar-S) and for individuals (I, I-MR), and two popular control charts for small shifts (CUSUM, EWMA). 
