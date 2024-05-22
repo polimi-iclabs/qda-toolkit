@@ -1,15 +1,15 @@
 # Quality Data Analysis
 
-This repository contains the `qda` module, a Python package that provides functions for creating control charts and returning the results of linear regression and ARIMA models. The output is designed to be user-friendly and similar to the output of Minitab.
+This repository contains `qda`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
 ## Features
 
 The QDA module contains several classes, each with its own functionality:
 
 1. **ControlCharts**: This class provides several methods for creating control charts. Here are some of the key methods:
-    - `XbarS(original_df, K = 3, sigma = None, subset_size = None, plotit = True)`: This method creates an X-bar and S control chart. It takes in a dataframe, a constant K, an optional sigma value, an optional subset size, and a boolean to determine if the chart should be plotted.
     - `IMR(original_df, col_name, K = 3, subset_size = None, run_rules = False, plotit = True)`: This method creates an Individual and Moving Range (IMR) control chart. It takes in a dataframe, a column name, a constant K, an optional subset size, a boolean to determine if run rules should be applied, and a boolean to determine if the chart should be plotted.
     - `XbarR(original_df, K = 3, subset_size = None, plotit = True)`: This method creates an X-bar and R control chart. It takes in a dataframe, a constant K, an optional subset size, and a boolean to determine if the chart should be plotted.
+    - `XbarS(original_df, K = 3, sigma = None, subset_size = None, plotit = True)`: This method creates an X-bar and S control chart. It takes in a dataframe, a constant K, an optional sigma value, an optional subset size, and a boolean to determine if the chart should be plotted.
 
 Each of these methods returns a dataframe with the calculated control limits and plots the control chart if `plotit` is set to `True`.
 
