@@ -1,4 +1,6 @@
-# Quality Data Analysis
+![Logo](https://github.com/polimi-iclabs/qda/blob/main/docs/logo.svg)
+
+# QDA: Quality Data Analysis - a Python Package for Statistical Process Control and Quality Data Modeling
 
 This repository contains `qda`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
