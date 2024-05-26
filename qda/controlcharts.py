@@ -734,8 +734,66 @@ class ControlCharts:
         return df_EWMA
     
     @staticmethod
-    def t2hotelling():
-        pass
+    def T2hotelling(original_df, col_names, sample_size, alpha, mean = None, varcov = None, plotit = True):
+        
+        # number of samples
+        m = len(original_df)/sample_size
+        if abs(m - round(m)) != 0:
+            raise ValueError('The sample size must be a factor of the number of rows in the DataFrame.')
+
+        # number of variables
+        p = len(col_names)
+
+        # number of observations
+        n = sample_size
+
+        original_df['sample_id'] = np.repeat(np.arange(1, len(original_df)/sample_size+1), sample_size)
+
+        if mean is None:
+            # group by sample_id to calculate the mean within each sample
+            sample_mean = original_df.groupby('sample_id').mean()
+
+            # compute the grand mean
+            Xbarbar = sample_mean.mean()
+
+            # reorder the columns to match the order of the columns in the DataFrame
+            Xbarbar = Xbarbar.reindex(columns=col_names)
+
+        if varcov is None:
+            # Compute the variance and covariance matrix of each group (sample)
+            cov_matrix = original_df.groupby('sample_id').cov()
+            
+            # Compute the mean covariance matrix
+            S = cov_matrix.groupby(level=1).mean()
+            
+            # reorder the columns to match the order of the columns in the DataFrame
+            S = S.reindex(columns=col_names, index=col_names)
+
+        UCL = (p * (m-1) * (n-1)) / (m * (n-1) - (p-1)) * stats.f.ppf(1-alpha, p, m*n - m + 1 - p)
+        # add the UCL to the DataFrame
+        sample_mean['UCL'] = UCL
+
+        # Calculate the Hotelling T2 statistic for all the samples
+        # Initialize the list to store the T2 values
+        sample_mean['T2'] = np.nan
+
+        # calculate the inverse of the covariance matrix
+        S_inv = np.linalg.inv(S)
+
+        for i in range(m):
+            sample_mean['T2'].iloc[i] = n * (sample_mean.iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean.iloc[i]-Xbarbar)
+
+        # Plot the Hotelling T2 statistic
+        if plotit == True:
+            plt.plot(sample_mean['T2'], color='b', linestyle='-', marker='o')
+            plt.hlines(UCL, 0, m, color='firebrick', linewidth=1)
+            plt.title('Hotelling T2 chart')
+            plt.text(m+.5, UCL, 'UCL = {:.3f}'.format(UCL), verticalalignment='center')
+            plt.xlim(-1, m)
+            plt.xlabel('Sample')
+            plt.show()
+
+        return sample_mean
 
 class constants:
     @staticmethod
