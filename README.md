@@ -1,4 +1,6 @@
-![Logo](https://github.com/polimi-iclabs/qda/blob/main/docs/logo.svg)
+<p align="center">
+  <img src="https://github.com/polimi-iclabs/qda/blob/main/docs/logo.svg" alt="Logo">
+</p>
 
 # QDA: Quality Data Analysis - a Python Package for Statistical Process Control and Quality Data Modeling
 
