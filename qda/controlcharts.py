@@ -9,7 +9,7 @@ import scipy.special as sps
 class ControlCharts:
     @staticmethod
     def I(original_df, col_name, K = 3, subset_size = None, plotit = True):
-        """Implements the Individual Moving Range (IMR) chart.
+        """Implements the Individual (I) chart.
         Parameters
         ----------
         original_df : pandas.DataFrame
@@ -732,6 +732,10 @@ class ControlCharts:
             plt.show()
         
         return df_EWMA
+    
+    @staticmethod
+    def t2hotelling():
+        pass
 
 class constants:
     @staticmethod

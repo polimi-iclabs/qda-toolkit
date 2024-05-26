@@ -1,2 +1,2 @@
 from .models import *
-from .spc import *
+from .controlcharts import *
