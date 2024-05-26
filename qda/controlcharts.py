@@ -735,11 +735,12 @@ class ControlCharts:
     
     @staticmethod
     def T2hotelling(original_df, col_names, sample_size, alpha, mean = None, varcov = None, plotit = True):
-        
-        # number of samples
-        m = len(original_df)/sample_size
+            
+        # check if it is an integer
         if abs(m - round(m)) != 0:
             raise ValueError('The sample size must be a factor of the number of rows in the DataFrame.')
+        else:
+            m = int(m)
 
         # number of variables
         p = len(col_names)
@@ -757,7 +758,7 @@ class ControlCharts:
             Xbarbar = sample_mean.mean()
 
             # reorder the columns to match the order of the columns in the DataFrame
-            Xbarbar = Xbarbar.reindex(columns=col_names)
+            Xbarbar = Xbarbar.reindex(index=col_names)
 
         if varcov is None:
             # Compute the variance and covariance matrix of each group (sample)
@@ -769,10 +770,6 @@ class ControlCharts:
             # reorder the columns to match the order of the columns in the DataFrame
             S = S.reindex(columns=col_names, index=col_names)
 
-        UCL = (p * (m-1) * (n-1)) / (m * (n-1) - (p-1)) * stats.f.ppf(1-alpha, p, m*n - m + 1 - p)
-        # add the UCL to the DataFrame
-        sample_mean['UCL'] = UCL
-
         # Calculate the Hotelling T2 statistic for all the samples
         # Initialize the list to store the T2 values
         sample_mean['T2'] = np.nan
@@ -781,15 +778,26 @@ class ControlCharts:
         S_inv = np.linalg.inv(S)
 
         for i in range(m):
-            sample_mean['T2'].iloc[i] = n * (sample_mean.iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean.iloc[i]-Xbarbar)
+            sample_mean['T2'].iloc[i] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
+
+        # Calculate the upper control limit
+        UCL = (p * (m-1) * (n-1)) / (m * (n-1) - (p-1)) * stats.f.ppf(1-alpha, p, m*n - m + 1 - p)
+        # add the UCL to the DataFrame
+        sample_mean['UCL'] = UCL
+
+        # Add a column with the test
+        sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > UCL, sample_mean['T2'], np.nan)
 
         # Plot the Hotelling T2 statistic
         if plotit == True:
             plt.plot(sample_mean['T2'], color='b', linestyle='-', marker='o')
-            plt.hlines(UCL, 0, m, color='firebrick', linewidth=1)
+            plt.hlines(UCL, 0, m+1, color='firebrick', linewidth=1)
+            plt.hlines(np.median(sample_mean['T2']), 0, m+1, color='g', linewidth=1)
+            plt.plot(sample_mean['T2_TEST'], linestyle='none', marker='s', color='firebrick', markersize=10)
             plt.title('Hotelling T2 chart')
-            plt.text(m+.5, UCL, 'UCL = {:.3f}'.format(UCL), verticalalignment='center')
-            plt.xlim(-1, m)
+            plt.text(m+1.2, UCL, 'UCL = {:.3f}'.format(UCL), verticalalignment='center')
+            plt.text(m+1.2, np.median(sample_mean['T2']), 'CL = {:.3f}'.format(np.median(sample_mean['T2']), verticalalignment='center'))
+            plt.xlim(0, m+1)
             plt.xlabel('Sample')
             plt.show()
 
