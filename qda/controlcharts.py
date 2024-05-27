@@ -847,7 +847,7 @@ class ControlCharts:
         if plotit == True:
             plt.plot(sample_mean['UCL'], color='firebrick', linewidth=1)
             plt.hlines(np.median(sample_mean['T2']), 1, len(sample_mean), color='g', linewidth=1)
-            plt.plot(sample_mean['T2'], color='b', linestyle='-', marker='o')
+            plt.plot(sample_mean['T2'], color='b', linestyle='--', marker='o')
             plt.plot(sample_mean['T2_TEST'], linestyle='none', marker='s', color='firebrick', markersize=10)
             plt.title('T$^2$ chart of %s' % col_names)
             if len(sample_mean) > m and UCL1 != UCL2:
