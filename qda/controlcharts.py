@@ -735,40 +735,95 @@ class ControlCharts:
     
     @staticmethod
     def T2hotelling(original_df, col_names, sample_size, alpha, mean = None, varcov = None, plotit = True):
+        
+        '''
+        This function plots the Hotelling T2 chart of a DataFrame
+        and returns the DataFrame with the Hotelling T2 values.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+        col_names : list
+            The names of the columns in the DataFrame.
+        sample_size : tuple
+            The values of m (number of samples) and n (number of observations in each sample). 
+            In case the grand mean and varcov matrix are not provided, m is also the number of samples used to calculate the grand mean and varcov.
+        alpha : float
+            The significance level.
+        mean : Series, optional
+            The mean of the population. The default is None.
+        varcov : DataFrame, optional
+            The variance-covariance matrix of the population. The default is None.
+        plotit : bool, optional
+            If True, the function will plot the Hotelling T2 chart. The default is True.
+
+        Returns
+        -------
+        sample_mean : DataFrame
+            The DataFrame with the Hotelling T2 values, control limits and alarm rules.
             
-        # check if it is an integer
-        if abs(m - round(m)) != 0:
-            raise ValueError('The sample size must be a factor of the number of rows in the DataFrame.')
-        else:
-            m = int(m)
+        '''
+
+        m, n = sample_size
+
+        # check if the dataset has the correct number of rows
+        if np.mod(len(original_df), n) != 0:
+            raise ValueError('The number of observations (n) must be a factor of the number of rows in the DataFrame.')
 
         # number of variables
         p = len(col_names)
 
-        # number of observations
-        n = sample_size
+        original_df['sample_id'] = np.repeat(np.arange(1, len(original_df)/n+1), n)
 
-        original_df['sample_id'] = np.repeat(np.arange(1, len(original_df)/sample_size+1), sample_size)
+        # group by sample_id to calculate the mean within each sample
+        sample_mean = original_df.groupby('sample_id').mean()
 
         if mean is None:
-            # group by sample_id to calculate the mean within each sample
-            sample_mean = original_df.groupby('sample_id').mean()
-
-            # compute the grand mean
-            Xbarbar = sample_mean.mean()
+            # compute the grand mean from samples up to m
+            Xbarbar = sample_mean[col_names].iloc[:m].mean()
 
             # reorder the columns to match the order of the columns in the DataFrame
             Xbarbar = Xbarbar.reindex(index=col_names)
+        else:
+            Xbarbar = mean
 
         if varcov is None:
-            # Compute the variance and covariance matrix of each group (sample)
-            cov_matrix = original_df.groupby('sample_id').cov()
+            if n > 1: 
+                # Compute the variance and covariance matrix of each group (sample) up to m
+                original_df_subset = original_df[original_df['sample_id'] <= m]
+                cov_matrix = original_df_subset.groupby('sample_id')[col_names].cov()
+                
+                # Compute the mean covariance matrix
+                S = cov_matrix.groupby(level=1).mean()
+                
+                # reorder the columns to match the order of the columns in the DataFrame
+                S = S.reindex(columns=col_names, index=col_names)
+
+                # Compute the UCL for the Hotelling T2 statistic
+                print('The UCL is calculated using the F distribution.')
+                UCL1 = (p * (m-1) * (n-1)) / (m * (n-1) - (p-1)) * stats.f.ppf(1-alpha, p, m*n - m + 1 - p)
+                UCL2 = UCL1
+            else:
+                # short range estimator
+                # Create the V matrix
+                V = sample_mean[col_names].diff().dropna()
+
+                # Calculate the short range estimator S2
+                S = 1/2 * V.transpose().dot(V) / (m-1)
+
+                # Compute the UCL for the Hotelling T2 statistic with the beta distribution
+                print('The UCL is calculated using the BETA distribution.')
+                UCL1 = ((m-1)**2)/m*stats.beta.ppf(1 - alpha, p/2, (m-p-1)/2)
+                UCL2 = (p*(m+1)*(m-1))/(m*(m-p))*stats.f.ppf(1-alpha, p, m - p)
+
+        else:   
+            S = varcov
             
-            # Compute the mean covariance matrix
-            S = cov_matrix.groupby(level=1).mean()
-            
-            # reorder the columns to match the order of the columns in the DataFrame
-            S = S.reindex(columns=col_names, index=col_names)
+            # Compute the UCL for the Hotelling T2 statistic with the chi2 distribution
+            print('The UCL is calculated using the CHI2 distribution.')
+            UCL1 = stats.chi2.ppf(1 - alpha, df = p)
+            UCL2 = UCL1
 
         # Calculate the Hotelling T2 statistic for all the samples
         # Initialize the list to store the T2 values
@@ -777,28 +832,33 @@ class ControlCharts:
         # calculate the inverse of the covariance matrix
         S_inv = np.linalg.inv(S)
 
-        for i in range(m):
+        for i in range(len(sample_mean)):
             sample_mean['T2'].iloc[i] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
 
-        # Calculate the upper control limit
-        UCL = (p * (m-1) * (n-1)) / (m * (n-1) - (p-1)) * stats.f.ppf(1-alpha, p, m*n - m + 1 - p)
-        # add the UCL to the DataFrame
-        sample_mean['UCL'] = UCL
+        # add the UCL to the DataFrame up to m
+        sample_mean['UCL'] = UCL1
+        if len(sample_mean) > m:
+            sample_mean['UCL'].iloc[m:] = UCL2
 
         # Add a column with the test
-        sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > UCL, sample_mean['T2'], np.nan)
+        sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > sample_mean['UCL'], sample_mean['T2'], np.nan)
 
         # Plot the Hotelling T2 statistic
         if plotit == True:
+            plt.plot(sample_mean['UCL'], color='firebrick', linewidth=1)
+            plt.hlines(np.median(sample_mean['T2']), 1, len(sample_mean), color='g', linewidth=1)
             plt.plot(sample_mean['T2'], color='b', linestyle='-', marker='o')
-            plt.hlines(UCL, 0, m+1, color='firebrick', linewidth=1)
-            plt.hlines(np.median(sample_mean['T2']), 0, m+1, color='g', linewidth=1)
             plt.plot(sample_mean['T2_TEST'], linestyle='none', marker='s', color='firebrick', markersize=10)
-            plt.title('Hotelling T2 chart')
-            plt.text(m+1.2, UCL, 'UCL = {:.3f}'.format(UCL), verticalalignment='center')
-            plt.text(m+1.2, np.median(sample_mean['T2']), 'CL = {:.3f}'.format(np.median(sample_mean['T2']), verticalalignment='center'))
-            plt.xlim(0, m+1)
+            plt.title('T$^2$ chart of %s' % col_names)
+            if len(sample_mean) > m and UCL1 != UCL2:
+                plt.text(len(sample_mean)+1.2, UCL1, 'UCL_p1 = {:.3f}'.format(UCL1), verticalalignment='center')
+                plt.text(len(sample_mean)+1.2, UCL2, 'UCL_p2 = {:.3f}'.format(UCL2), verticalalignment='center')
+            else:
+                plt.text(len(sample_mean)+1.2, UCL1, 'UCL = {:.3f}'.format(UCL1), verticalalignment='center')
+            plt.text(len(sample_mean)+1.2, np.median(sample_mean['T2']), 'Median = {:.3f}'.format(np.median(sample_mean['T2']), verticalalignment='center'))
+            plt.xlim(0, len(sample_mean)+1)
             plt.xlabel('Sample')
+            plt.ylabel('T$^2$')
             plt.show()
 
         return sample_mean
