@@ -47,7 +47,7 @@ Then, you can create an instance of the QDAModule class and use its methods to c
 qda.ControlCharts.IMR(dataframe, column_name)
 
 # summary of a linear regression model
-qda.summary.regression(regression_model_object)
+qda.Summary.regression(regression_model_object)
 ```
 ## License
 
