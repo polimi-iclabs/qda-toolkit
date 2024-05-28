@@ -2,9 +2,9 @@
   <img src="https://github.com/polimi-iclabs/qda/blob/main/docs/logo.svg" alt="Logo">
 </p>
 
-# QDA: Quality Data Analysis - a Python Package for Statistical Process Control and Quality Data Modeling
+# qda-toolkit: a Python Package for Statistical Process Control and Quality Data Analysis
 
-This repository contains `qda`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
+This repository contains `qda-toolkit`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
 ## Features
 
@@ -32,14 +32,14 @@ The QDA module contains several classes, each with its own functionality:
 
 To install the QDA module, you can install it via `pip`.
 ```
-pip install qda
+pip install qda-toolkit
 ```
 
 ## Usage
 
-After installation, you can import the `qda` module in your Python script as follows:
+After installation, you can import the `qda-toolkit` module in your Python script as follows:
 ```
-import qda
+import qda-toolkit as qda
 ```
 Then, you can create an instance of the QDAModule class and use its methods to create control charts and fit models.
 ```

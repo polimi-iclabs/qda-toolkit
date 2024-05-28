@@ -2,13 +2,16 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="121.75741mm"
-   height="99.419487mm"
-   viewBox="0 0 121.75741 99.419486"
+   width="215.58228mm"
+   height="107.79114mm"
+   viewBox="0 0 215.58228 107.79114"
    version="1.1"
    id="svg5"
    sodipodi:docname="logo.svg"
    inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   inkscape:export-filename="logo.png"
+   inkscape:export-xdpi="150.81018"
+   inkscape:export-ydpi="150.81018"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -24,9 +27,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.84096521"
-     inkscape:cx="151.6115"
-     inkscape:cy="178.96103"
+     inkscape:zoom="0.5946522"
+     inkscape:cx="394.34816"
+     inkscape:cy="-10.930759"
      inkscape:window-width="1440"
      inkscape:window-height="830"
      inkscape:window-x="-6"
@@ -39,14 +42,21 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-4.866704,-47.466698)">
+     transform="translate(29.640079,-168.27682)">
     <rect
-       style="opacity:1;fill:#6699ff;fill-opacity:1;stroke:none;stroke-width:3.54102;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       style="opacity:1;fill:#6699ff;fill-opacity:1;stroke:none;stroke-width:4.90617;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       id="rect403"
+       width="215.58228"
+       height="107.79114"
+       x="-29.640079"
+       y="168.27682" />
+    <rect
+       style="opacity:1;fill:#6699ff;fill-opacity:1;stroke:none;stroke-width:4.90617;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
        id="rect2075"
-       width="121.75741"
-       height="99.419487"
-       x="4.866704"
-       y="47.466698" />
+       width="215.58228"
+       height="107.79114"
+       x="-42.045731"
+       y="43.280872" />
     <text
        xml:space="preserve"
        style="font-size:20.4611px;font-family:'brandon grotesque';-inkscape-font-specification:'brandon grotesque';opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
@@ -59,67 +69,129 @@
          x="31.368128"
          y="90.322403" /></text>
     <g
-       id="g2432"
-       transform="translate(-2.0450212)">
+       id="g2003"
+       transform="matrix(1.0424382,0.08716182,-0.08716182,1.0424382,-1.5626153,-6.7232445)">
+      <path
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+         d="M 30,80 55,66.024 80,71.376 105,54.877033"
+         id="path952"
+         sodipodi:nodetypes="cccc" />
+      <ellipse
+         style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+         id="ellipse1005"
+         cx="30.373684"
+         cy="79.973526"
+         rx="4.2752118"
+         ry="4.2752132" />
+      <ellipse
+         style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+         id="ellipse1003"
+         cx="54.8517"
+         cy="66.035782"
+         rx="4.2752118"
+         ry="4.2752132" />
+      <ellipse
+         style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+         id="ellipse1001"
+         cx="79.636414"
+         cy="71.182785"
+         rx="4.2752118"
+         ry="4.2752132" />
+      <ellipse
+         style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+         id="path234"
+         cx="104.25909"
+         cy="55.303257"
+         rx="4.2752118"
+         ry="4.2752132" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.9457px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:2.45365;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       x="19.894156"
+       y="138.18088"
+       id="text1840"><tspan
+         sodipodi:role="line"
+         id="tspan1838"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.45365"
+         x="19.894156"
+         y="138.18088">Quality Data Analysis</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:47.1455px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8.29494;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       x="13.535452"
+       y="123.31383"
+       id="text1996"><tspan
+         sodipodi:role="line"
+         id="tspan1994"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Microsoft Sans Serif';-inkscape-font-specification:'Microsoft Sans Serif';fill:#000000;fill-opacity:1;stroke:none;stroke-width:8.29494"
+         x="13.535452"
+         y="123.31383">QDA</tspan></text>
+    <g
+       id="g1009">
       <g
-         id="g2003"
-         transform="matrix(1.0424382,0.08716182,-0.08716182,1.0424382,0.48240594,-6.7232445)">
-        <path
-           style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-           d="M 30,80 55,66.024 80,71.376 105,54.877033"
-           id="path952"
-           sodipodi:nodetypes="cccc" />
-        <ellipse
-           style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-           id="ellipse1005"
-           cx="30.373684"
-           cy="79.973526"
-           rx="4.2752118"
-           ry="4.2752132" />
-        <ellipse
-           style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-           id="ellipse1003"
-           cx="54.8517"
-           cy="66.035782"
-           rx="4.2752118"
-           ry="4.2752132" />
-        <ellipse
-           style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-           id="ellipse1001"
-           cx="79.636414"
-           cy="71.182785"
-           rx="4.2752118"
-           ry="4.2752132" />
-        <ellipse
-           style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-           id="path234"
-           cx="104.25909"
-           cy="55.303257"
-           rx="4.2752118"
-           ry="4.2752132" />
+         id="g1021">
+        <g
+           id="g415"
+           transform="matrix(1.0424382,0.08716182,-0.08716182,1.0424382,13.873372,121.41889)">
+          <path
+             style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:2;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+             d="M 30,80 55,66.024 80,71.376 105,54.877033"
+             id="path405"
+             sodipodi:nodetypes="cccc" />
+          <ellipse
+             style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+             id="ellipse407"
+             cx="30.373684"
+             cy="79.973526"
+             rx="4.2752118"
+             ry="4.2752132" />
+          <ellipse
+             style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+             id="ellipse409"
+             cx="54.8517"
+             cy="66.035782"
+             rx="4.2752118"
+             ry="4.2752132" />
+          <ellipse
+             style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+             id="ellipse411"
+             cx="79.636414"
+             cy="71.182785"
+             rx="4.2752118"
+             ry="4.2752132" />
+          <ellipse
+             style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3.6;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+             id="ellipse413"
+             cx="104.25909"
+             cy="55.303257"
+             rx="4.2752118"
+             ry="4.2752132" />
+        </g>
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.9457px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:2.45365;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+           x="-2.0843842"
+           y="260.03064"
+           id="text419"><tspan
+             sodipodi:role="line"
+             id="tspan417"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.45365"
+             x="-2.0843842"
+             y="260.03064">Your toolkit for Quality Data Analysis</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:34.2314px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:6.02278;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+           x="-3.654422"
+           y="247.07254"
+           id="text423"
+           transform="scale(1.0287726,0.97203209)"><tspan
+             sodipodi:role="line"
+             id="tspan421"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Microsoft Sans Serif';-inkscape-font-specification:'Microsoft Sans Serif';fill:#000000;fill-opacity:1;stroke:none;stroke-width:6.02278"
+             x="-3.654422"
+             y="247.07254">qda-toolkit</tspan></text>
       </g>
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.9457px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:2.45365;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-         x="21.939177"
-         y="138.18088"
-         id="text1840"><tspan
-           sodipodi:role="line"
-           id="tspan1838"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.45365"
-           x="21.939177"
-           y="138.18088">Quality Data Analysis</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:47.1455px;font-family:'Agency FB';-inkscape-font-specification:'Agency FB';opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:8.29494;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
-         x="15.580473"
-         y="123.31383"
-         id="text1996"><tspan
-           sodipodi:role="line"
-           id="tspan1994"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Microsoft Sans Serif';-inkscape-font-specification:'Microsoft Sans Serif';fill:#000000;fill-opacity:1;stroke:none;stroke-width:8.29494"
-           x="15.580473"
-           y="123.31383">QDA</tspan></text>
     </g>
   </g>
 </svg>
