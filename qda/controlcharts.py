@@ -194,7 +194,9 @@ class ControlCharts:
                 ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
         
-
+        '''
+        TO DO - Implement the Western Electric alarm rules for the IMR chart
+        
         if run_rules == True:
 
             # Create a new dataframe for the Run Rules
@@ -323,7 +325,8 @@ class ControlCharts:
             ax[0].plot(df['I_TEST6'], linestyle='none', marker='X', color='orange', markersize=10)
             ax[0].plot(df['I_TEST7'], linestyle='none', marker='X', color='orange', markersize=10)
             ax[0].plot(df['I_TEST8'], linestyle='none', marker='X', color='orange', markersize=10)
-            
+        '''
+        
         plt.show()
 
         return df
