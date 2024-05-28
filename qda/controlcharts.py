@@ -332,7 +332,7 @@ class ControlCharts:
         return df
     
     @staticmethod
-    def XbarR(original_df, K = 3, subset_size = None, plotit = True):
+    def XbarR(original_df, K = 3, mean = None, subset_size = None, plotit = True):
         '''
         This function plots the Xbar-R charts of a DataFrame 
         and returns the DataFrame with the control limits and alarm rules.
@@ -343,6 +343,8 @@ class ControlCharts:
             The DataFrame that contains the data.
         K : int, optional
             The number of standard deviations. The default is 3.
+        mean : float, optional
+            Input the mean of the population. Otherwise, the mean of the sample will be used.
         subset_size : int, optional
             The number of rows to be used for the IMR chart. Default is None and all rows are used.
 
@@ -375,7 +377,11 @@ class ControlCharts:
         # Add a column with the range of the rows
         data_XR['sample_range'] = original_df.max(axis=1) - original_df.min(axis=1)
 
-        Xbar_mean = data_XR['sample_mean'].iloc[:subset_size].mean()
+        if mean is None:
+            Xbar_mean = data_XR['sample_mean'].iloc[:subset_size].mean()
+        else:
+            Xbar_mean = mean
+
         R_mean = data_XR['sample_range'].iloc[:subset_size].mean()
 
         # Now we can compute the CL, UCL and LCL for Xbar and R
@@ -393,40 +399,41 @@ class ControlCharts:
         data_XR['R_TEST1'] = np.where((data_XR['sample_range'] > data_XR['R_UCL']) | 
                 (data_XR['sample_range'] < data_XR['R_LCL']), data_XR['sample_range'], np.nan)
 
-        fig, ax = plt.subplots(2, 1, sharex=True)
-        fig.suptitle(('Xbar-R charts'))
-        ax[0].plot(data_XR['sample_mean'], color='mediumblue', linestyle='--', marker='o')
-        ax[0].plot(data_XR['Xbar_UCL'], color='firebrick', linewidth=1)
-        ax[0].plot(data_XR['Xbar_CL'], color='g', linewidth=1)
-        ax[0].plot(data_XR['Xbar_LCL'], color='firebrick', linewidth=1)
-        ax[0].set_ylabel('Sample Mean')
-        # add the values of the control limits on the right side of the plot
-        ax[0].text(len(data_XR)+.5, data_XR['Xbar_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_XR['Xbar_UCL'].iloc[0]), verticalalignment='center')
-        ax[0].text(len(data_XR)+.5, data_XR['Xbar_CL'].iloc[0], 'CL = {:.3f}'.format(data_XR['Xbar_CL'].iloc[0]), verticalalignment='center')
-        ax[0].text(len(data_XR)+.5, data_XR['Xbar_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_XR['Xbar_LCL'].iloc[0]), verticalalignment='center')
-        # highlight the points that violate the alarm rules
-        ax[0].plot(data_XR['Xbar_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+        if plotit:
+            fig, ax = plt.subplots(2, 1, sharex=True)
+            fig.suptitle(('Xbar-R charts'))
+            ax[0].plot(data_XR['sample_mean'], color='mediumblue', linestyle='--', marker='o')
+            ax[0].plot(data_XR['Xbar_UCL'], color='firebrick', linewidth=1)
+            ax[0].plot(data_XR['Xbar_CL'], color='g', linewidth=1)
+            ax[0].plot(data_XR['Xbar_LCL'], color='firebrick', linewidth=1)
+            ax[0].set_ylabel('Sample Mean')
+            # add the values of the control limits on the right side of the plot
+            ax[0].text(len(data_XR)+.5, data_XR['Xbar_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_XR['Xbar_UCL'].iloc[0]), verticalalignment='center')
+            ax[0].text(len(data_XR)+.5, data_XR['Xbar_CL'].iloc[0], 'CL = {:.3f}'.format(data_XR['Xbar_CL'].iloc[0]), verticalalignment='center')
+            ax[0].text(len(data_XR)+.5, data_XR['Xbar_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_XR['Xbar_LCL'].iloc[0]), verticalalignment='center')
+            # highlight the points that violate the alarm rules
+            ax[0].plot(data_XR['Xbar_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
 
-        ax[1].plot(data_XR['sample_range'], color='mediumblue', linestyle='--', marker='o')
-        ax[1].plot(data_XR['R_UCL'], color='firebrick', linewidth=1)
-        ax[1].plot(data_XR['R_CL'], color='g', linewidth=1)
-        ax[1].plot(data_XR['R_LCL'], color='firebrick', linewidth=1)
-        ax[1].set_ylabel('Sample Range')
-        ax[1].set_xlabel('Sample Number')
-        # add the values of the control limits on the right side of the plot
-        ax[1].text(len(data_XR)+.5, data_XR['R_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_XR['R_UCL'].iloc[0]), verticalalignment='center')
-        ax[1].text(len(data_XR)+.5, data_XR['R_CL'].iloc[0], 'CL = {:.3f}'.format(data_XR['R_CL'].iloc[0]), verticalalignment='center')
-        ax[1].text(len(data_XR)+.5, data_XR['R_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_XR['R_LCL'].iloc[0]), verticalalignment='center')
-        # highlight the points that violate the alarm rules
-        ax[1].plot(data_XR['R_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
-        # set the x-axis limits
-        ax[1].set_xlim(-1, len(data_XR))
+            ax[1].plot(data_XR['sample_range'], color='mediumblue', linestyle='--', marker='o')
+            ax[1].plot(data_XR['R_UCL'], color='firebrick', linewidth=1)
+            ax[1].plot(data_XR['R_CL'], color='g', linewidth=1)
+            ax[1].plot(data_XR['R_LCL'], color='firebrick', linewidth=1)
+            ax[1].set_ylabel('Sample Range')
+            ax[1].set_xlabel('Sample Number')
+            # add the values of the control limits on the right side of the plot
+            ax[1].text(len(data_XR)+.5, data_XR['R_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_XR['R_UCL'].iloc[0]), verticalalignment='center')
+            ax[1].text(len(data_XR)+.5, data_XR['R_CL'].iloc[0], 'CL = {:.3f}'.format(data_XR['R_CL'].iloc[0]), verticalalignment='center')
+            ax[1].text(len(data_XR)+.5, data_XR['R_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_XR['R_LCL'].iloc[0]), verticalalignment='center')
+            # highlight the points that violate the alarm rules
+            ax[1].plot(data_XR['R_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            # set the x-axis limits
+            ax[1].set_xlim(-1, len(data_XR))
 
-        if subset_size < len(original_df):
-            ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
-            ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
+            if subset_size < len(original_df):
+                ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
+                ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
-        plt.show()
+            plt.show()
 
         return data_XR
     
