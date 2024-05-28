@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/polimi-iclabs/qda/blob/main/docs/logo.svg" alt="Logo">
+  <img src="https://raw.githubusercontent.com/polimi-iclabs/qda-toolkit/main/docs/logo.svg" alt="Logo">
 </p>
 
 # qda-toolkit: a Python Package for Statistical Process Control and Quality Data Analysis
