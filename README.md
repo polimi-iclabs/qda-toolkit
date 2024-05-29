@@ -37,9 +37,9 @@ pip install qda-toolkit
 
 ## Usage
 
-After installation, you can import the `qda-toolkit` module in your Python script as follows:
+After installation, you can import the `qdatoolkit` module in your Python script as follows:
 ```
-import qda-toolkit as qda
+import qdatoolkit as qda
 ```
 Then, you can create an instance of the QDAModule class and use its methods to create control charts and fit models.
 ```

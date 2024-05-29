@@ -84,6 +84,7 @@ class ControlCharts:
             if subset_size < len(original_df):
                 plt.vlines(subset_size-.5, df['I_LCL'].iloc[0], df['I_UCL'].iloc[0], color='k', linestyle='--')
 
+            plt.tight_layout()
             plt.show()
 
         return df
@@ -193,7 +194,9 @@ class ControlCharts:
                 ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
                 ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
-        
+            plt.tight_layout()
+            plt.show()
+
         '''
         TO DO - Implement the Western Electric alarm rules for the IMR chart
         
@@ -326,8 +329,6 @@ class ControlCharts:
             ax[0].plot(df['I_TEST7'], linestyle='none', marker='X', color='orange', markersize=10)
             ax[0].plot(df['I_TEST8'], linestyle='none', marker='X', color='orange', markersize=10)
         '''
-        
-        plt.show()
 
         return df
     
@@ -433,6 +434,7 @@ class ControlCharts:
                 ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
                 ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
+            plt.tight_layout()
             plt.show()
 
         return data_XR
@@ -555,7 +557,7 @@ class ControlCharts:
             ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
             ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
-        
+        plt.tight_layout()
         plt.show()
 
         return data_XS
@@ -650,7 +652,8 @@ class ControlCharts:
 
             if subset_size < len(data):
                 plt.vlines(subset_size-.5, -H, H, color='k', linestyle='--')
-        
+
+            plt.tight_layout()
             plt.show()
 
         return df_CUSUM
@@ -739,6 +742,7 @@ class ControlCharts:
             if subset_size < len(data):
                 plt.vlines(subset_size-.5, df_EWMA['LCL'].iloc[-1], df_EWMA['UCL'].iloc[-1], color='k', linestyle='--')
             
+            plt.tight_layout()
             plt.show()
         
         return df_EWMA
@@ -869,6 +873,7 @@ class ControlCharts:
             plt.xlim(0, len(sample_mean)+1)
             plt.xlabel('Sample')
             plt.ylabel('T$^2$')
+            plt.tight_layout()
             plt.show()
 
         return sample_mean
