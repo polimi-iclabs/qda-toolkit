@@ -4,6 +4,10 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 import statsmodels
 import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA as arimafromlib
+from statsmodels.sandbox.stats.runs import runstest_1samp
+import statsmodels.graphics.tsaplots as sgt
+import matplotlib.pyplot as plt
+from scipy import stats
 
 def summary(results):
     """Prints a summary of the regression results.
@@ -696,3 +700,65 @@ class StepwiseRegression:
         print(df_model_summary.to_string(index=False))
 
         return        
+
+class Assumptions:
+    """Test the normality and independence assumptions on data.
+
+    Parameters
+    ----------
+    data : DataFrame
+        The data to test for assumptions.
+
+    Returns
+    -------
+    None
+    """
+    def __init__(self, data):
+        self.data = data.dropna()
+
+
+    def normality(self, qqplot=True):
+        """Test the normality of the data.
+
+        Parameters
+        ----------
+        data : DataFrame
+            The data to test for normality.
+
+        Returns
+        -------
+        None
+        """
+        _, pval_SW_res = stats.shapiro(self.data)
+        print('Shapiro-Wilk test p-value on the residuals = %.3f' % pval_SW_res)
+
+        if qqplot:
+            stats.probplot(self.data, dist="norm", plot=plt)
+            plt.show()
+        
+        return
+
+    def independence(self, lags=None):
+        """Test the independence of the data.
+
+        Parameters
+        ----------
+        data : DataFrame
+            The data to test for independence.
+
+        Returns
+        -------
+        None
+        """
+
+        # Runs test 
+        _, pval_runs = runstest_1samp(self.data, correction=False)
+        print('Runs test p-value = {:.3f}'.format(pval_runs))
+
+        # ACF and PACF
+        fig, ax = plt.subplots(2, 1)
+        sgt.plot_acf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[0])
+        fig.subplots_adjust(hspace=0.5)
+        sgt.plot_pacf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[1], method = 'ywm')
+        plt.show()
+        return
