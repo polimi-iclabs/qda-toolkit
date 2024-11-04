@@ -730,7 +730,7 @@ class Assumptions:
         None
         """
         _, pval_SW_res = stats.shapiro(self.data)
-        print('Shapiro-Wilk test p-value on the residuals = %.3f' % pval_SW_res)
+        print('Shapiro-Wilk test p-value = %.3f' % pval_SW_res)
 
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
