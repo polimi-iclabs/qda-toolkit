@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 DESCRIPTION = 'Quality data analysis toolkit'
 LONG_DESCRIPTION = 'A package to create charts and models for statistical process control.'
 
