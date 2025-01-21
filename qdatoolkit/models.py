@@ -8,6 +8,7 @@ from statsmodels.sandbox.stats.runs import runstest_1samp
 import statsmodels.graphics.tsaplots as sgt
 import matplotlib.pyplot as plt
 from scipy import stats
+import warnings
 
 def summary(results):
     """Prints a summary of the regression results.
@@ -714,8 +715,10 @@ class Assumptions:
     None
     """
     def __init__(self, data):
+        if isinstance(data, np.ndarray):
+            warnings.warn("Pandas Series is the preferable format. Converting NumPy array to DataFrame.", UserWarning)
+            data = pd.DataFrame(data)
         self.data = data.dropna()
-
 
     def normality(self, qqplot=True):
         """Test the normality of the data.
