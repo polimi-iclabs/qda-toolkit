@@ -54,7 +54,7 @@ def summary(results):
     print("\nCOEFFICIENTS")
     print("------------")
     # make a dataframe to store the results
-    
+
     df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values})
     df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
     print(df_coefficients.to_string(index=False))
@@ -135,8 +135,8 @@ def ARIMAsummary(results):
     t_values = results.tvalues
     p_values = results.pvalues
     n_coefficients = len(coefficients) - 1 #because models givers an additional information on sigma^2 in the list of coefficients
-    
-    
+
+
     # get the order of the model
     n_model = results.nobs
     ar_order = results.model.order[0]
@@ -145,12 +145,12 @@ def ARIMAsummary(results):
     order_model = results.model.order
     order_model_flag = sum(order_model) > 0
     max_order=np.max(results.model.order)
-    
+
     #get seasonal order vector
     so_model = results.model.seasonal_order
     DIFF_seasonal_order = so_model[1]
     seasonal_model_flag = so_model[3] > 0
-    
+
 
     #Model's degrees of freedom
     df_model = (results.nobs - diff_order - DIFF_seasonal_order) - (len(results.params) - 1) #degrees of freedom for the model: (n - d - D) - estimated parameters(p, q, P, Q, constant term)
@@ -164,12 +164,12 @@ def ARIMAsummary(results):
     if seasonal_model_flag:
         print(f"Seasonal ARIMA model fit with period {so_model[3]} and order: P={so_model[0]}, D={so_model[1]}, Q={so_model[2]}")
 
-    
+
     # Print the information in a similar format to Minitab
     print("\nFINAL ESTIMATES OF PARAMETERS")
     print("-------------------------------")
     # make a dataframe to store the results
-    
+
     df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
     df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
     print(df_coefficients.to_string(index=False))
@@ -205,7 +205,7 @@ def ARIMAsummary(results):
     df_LBtest = pd.DataFrame({'Lag': lagvalues, 'Chi-Square': LBQ.lb_stat, 'P-Value': LBQ.lb_pvalue})
     df_LBtest.style.format({'Lag': '{:.3f}', 'Chi-Square test': '{:.3f}', 'P-Value': '{:.3f}'})
     print(df_LBtest.to_string(index=False))
-   
+
     return
 
 
@@ -274,7 +274,7 @@ class Summary:
         print("\nCOEFFICIENTS")
         print("------------")
         # make a dataframe to store the results
-        
+
         df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values})
         df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
         print(df_coefficients.to_string(index=False))
@@ -355,8 +355,8 @@ class Summary:
         t_values = results.tvalues
         p_values = results.pvalues
         n_coefficients = len(coefficients) - 1 #because models givers an additional information on sigma^2 in the list of coefficients
-        
-        
+
+
         # get the order of the model
         n_model = results.nobs
         ar_order = results.model.order[0]
@@ -365,12 +365,12 @@ class Summary:
         order_model = results.model.order
         order_model_flag = sum(order_model) > 0
         max_order=np.max(results.model.order)
-        
+
         #get seasonal order vector
         so_model = results.model.seasonal_order
         DIFF_seasonal_order = so_model[1]
         seasonal_model_flag = so_model[3] > 0
-        
+
 
         #Model's degrees of freedom
         df_model = (results.nobs - diff_order - DIFF_seasonal_order) - (len(results.params) - 1) #degrees of freedom for the model: (n - d - D) - estimated parameters(p, q, P, Q, constant term)
@@ -384,12 +384,12 @@ class Summary:
         if seasonal_model_flag:
             print(f"Seasonal ARIMA model fit with period {so_model[3]} and order: P={so_model[0]}, D={so_model[1]}, Q={so_model[2]}")
 
-        
+
         # Print the information in a similar format to Minitab
         print("\nFINAL ESTIMATES OF PARAMETERS")
         print("-------------------------------")
         # make a dataframe to store the results
-        
+
         df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
         df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
         print(df_coefficients.to_string(index=False))
@@ -425,7 +425,7 @@ class Summary:
         df_LBtest = pd.DataFrame({'Lag': lagvalues, 'Chi-Square': LBQ.lb_stat, 'P-Value': LBQ.lb_pvalue})
         df_LBtest.style.format({'Lag': '{:.3f}', 'Chi-Square test': '{:.3f}', 'P-Value': '{:.3f}'})
         print(df_LBtest.to_string(index=False))
-    
+
         return
 
 def ARIMA(x, order, add_constant):
@@ -453,11 +453,11 @@ def ARIMA(x, order, add_constant):
         const_coeff='c'
     else:
         const_coeff='n'
-    
+
 
     if d!=0:
         x=x.diff(d)
-        
+
     results = arimafromlib(x, order=(p,0,q), trend=const_coeff).fit()
 
     # fixing the wrong values in the ARIMA returned object
@@ -496,11 +496,11 @@ class Models:
             const_coeff='c'
         else:
             const_coeff='n'
-        
+
 
         if d!=0:
             x=x.diff(d)
-            
+
         results = arimafromlib(x, order=(p,0,q), trend=const_coeff).fit()
 
         # fixing the wrong values in the ARIMA returned object
@@ -514,7 +514,7 @@ class Models:
 
 # create a class called StepwiseRegression that performs stepwise regression when fitting a model
 class StepwiseRegression:
-    
+
     """Performs stepwise regression.
 
     Parameters
@@ -558,7 +558,7 @@ class StepwiseRegression:
         self.X = X
         self.y = y
         self.variables_to_include = []
-        
+
         # fit the initial models with one independent variable at a time
         print('Stepwise Regression')
         print('\n######################################')
@@ -570,7 +570,7 @@ class StepwiseRegression:
         # check if self.variables_to_include is empty
         if len(self.variables_to_include) == 0:
             raise ValueError('All predictors have p-values greater than the alpha_to_enter level. No model was selected.')
-        
+
         while self.break_loop == False:
             k += 1
             print('\n######################################')
@@ -583,13 +583,13 @@ class StepwiseRegression:
                     self.backward_elimination()
             else:
                 raise ValueError('The direction must be either "both", "forward", or "backward".')
-            
+
             if k == self.max_iterations:
                 self.break_loop = True
                 print('Maximum number of iterations reached.')
 
-        return self        
-    
+        return self
+
     def forward_selection(self):
 
         print('Forward Selection')
@@ -599,7 +599,7 @@ class StepwiseRegression:
             original_variables = []
         else:
             original_variables = self.variables_to_include
-        
+
         number_of_variables = len(self.variables_to_include)
 
         if number_of_variables == self.X.shape[1]:
@@ -616,12 +616,12 @@ class StepwiseRegression:
                 testing_variables.append(i)
 
                 X_test = self.X.iloc[:, testing_variables]
-                
+
                 if self.add_constant:
                     X_test = sm.add_constant(X_test)
 
                 model_fit = sm.OLS(self.y, X_test).fit()
-                
+
                 # if the p-value of the new variable is less than the alpha_to_enter level, 
                 # add the variable to the list of variables to include
                 if model_fit.pvalues[-1] < self.alpha_to_enter and model_fit.pvalues[-1] < selected_pvalue:
@@ -637,12 +637,12 @@ class StepwiseRegression:
             self.SWsummary()
 
         return self
-        
-    
+
+
     def backward_elimination(self):
-        
+
         print('Backward Elimination')
-        
+
         original_variables = self.variables_to_include
 
         # sort the pvalues in descending order and remove the variable with pvalue > alpha_to_remove
@@ -659,11 +659,11 @@ class StepwiseRegression:
                 testing_variables.remove(self.X.columns.get_loc(variable_to_remove))
             else:
                 break
-        
+
         if len(testing_variables) == len(original_variables):
             print('\nNo predictor removed.')
             return(self)
-        
+
         X_test = self.X.iloc[:, testing_variables]
 
         if self.add_constant:
@@ -673,7 +673,7 @@ class StepwiseRegression:
         self.SWsummary()
 
         return self
-    
+
     def SWsummary(self):
         # Extract information from the result object
         results = self.model_fit
@@ -687,7 +687,7 @@ class StepwiseRegression:
         print("\nCOEFFICIENTS")
         print("------------")
         # make a dataframe to store the results
-        
+
         df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'P-Value': p_values})
         print(df_coefficients.to_string(index=False))
 
@@ -700,7 +700,7 @@ class StepwiseRegression:
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
         print(df_model_summary.to_string(index=False))
 
-        return        
+        return
 
 class Assumptions:
     """Test the normality and independence assumptions on data.
@@ -742,10 +742,10 @@ class Assumptions:
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
             plt.show()
-        
+
         return
 
-    def independence(self, lags=None):
+    def independence(self, plots=True, lags=None):
         """Test the independence of the data.
 
         Parameters
@@ -762,10 +762,12 @@ class Assumptions:
         _, pval_runs = runstest_1samp(self.data, correction=False)
         print('Runs test p-value = {:.3f}'.format(pval_runs))
 
-        # ACF and PACF
-        fig, ax = plt.subplots(2, 1)
-        sgt.plot_acf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[0])
-        fig.subplots_adjust(hspace=0.5)
-        sgt.plot_pacf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[1], method = 'ywm')
-        plt.show()
+        if plots:
+            # ACF and PACF
+            fig, ax = plt.subplots(2, 1)
+            sgt.plot_acf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[0])
+            fig.subplots_adjust(hspace=0.5)
+            sgt.plot_pacf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[1], method = 'ywm')
+            plt.show()
+
         return
