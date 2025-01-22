@@ -716,7 +716,11 @@ class Assumptions:
     """
     def __init__(self, data):
         if isinstance(data, np.ndarray):
-            warnings.warn("Pandas Series is the preferable format. Converting NumPy array to DataFrame.", UserWarning)
+            warnings.warn(
+                "A numpy array was passed to the Assumptions class and converted to Pandas Series.\n"
+                "Note that all other methods in qda-toolkit only accept Pandas Series or Pandas Dataframe.",
+                UserWarning
+            )
             data = pd.Series(data)
         self.data = data.dropna()
 
