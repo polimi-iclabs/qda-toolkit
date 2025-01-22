@@ -717,7 +717,7 @@ class Assumptions:
     def __init__(self, data):
         if isinstance(data, np.ndarray):
             warnings.warn("Pandas Series is the preferable format. Converting NumPy array to DataFrame.", UserWarning)
-            data = pd.DataFrame(data)
+            data = pd.Series(data)
         self.data = data.dropna()
 
     def normality(self, qqplot=True):
