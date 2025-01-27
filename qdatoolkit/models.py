@@ -5,6 +5,7 @@ import statsmodels
 import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA as arimafromlib
 from statsmodels.sandbox.stats.runs import runstest_1samp
+from statsmodels.tsa.stattools import acf
 import statsmodels.graphics.tsaplots as sgt
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -745,22 +746,28 @@ class Assumptions:
 
         return
 
-    def independence(self, plots=True, lags=None):
+    def independence(self, alpha=0.05, plots=True, lags=None):
         """Test the independence of the data.
 
         Parameters
         ----------
         data : DataFrame
             The data to test for independence.
+        
+        alpha : float
+            Significance level.
+                Default value alpha=0.05
+        
+        lags : int 
+            Parameter to indicate the independence test to perform: 
+                If None, Runs test
+                If lags=1, Bartlett test
+                If lags>1, LBQ test
 
         Returns
         -------
         None
         """
-
-        # Runs test 
-        _, pval_runs = runstest_1samp(self.data, correction=False)
-        print('Runs test p-value = {:.3f}'.format(pval_runs))
 
         if plots:
             # ACF and PACF
@@ -769,5 +776,49 @@ class Assumptions:
             fig.subplots_adjust(hspace=0.5)
             sgt.plot_pacf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[1], method = 'ywm')
             plt.show()
+
+        if lags == None:
+            # Runs test 
+            _, pval_runs = runstest_1samp(self.data, correction=False)
+            print('Runs test p-value = {:.3f}'.format(pval_runs))
+
+        if lags is not None:
+
+            if lags == 1:
+                #Bartlett's test at lag 1
+                [acf_values, lbq, _] = acf(self.data, nlags = int(np.sqrt(len(self.data))), qstat=True, fft = False)
+
+                rk = acf_values[lags]
+                z_alpha2 = stats.norm.ppf(1-alpha/2)
+                print('\nBartlett test at lag 1:\nTest statistic rk = %f' % rk)
+                print('Rejection region starts at %f' % (z_alpha2/np.sqrt(len(self.data))))
+
+                p_value = 2 * (1 - stats.norm.cdf(abs(rk) * np.sqrt(len(self.data))))
+                print('p-value = %f' % p_value)
+
+                if abs(rk)>z_alpha2/np.sqrt(len(self.data)):
+                    print('The null hypothesis is rejected')
+                else: print('The null hypothesis is accepted')
+
+            if lags > 1:
+
+                # LBQ test:
+                [acf_values, lbq, _] = acf(self.data, nlags = int(np.sqrt(len(self.data))), qstat=True, fft = False)
+                Q0_LBQ = lbq[lags-1]
+                print('LBQ test:\nQ0_LBQ = %f' % Q0_LBQ)
+
+                #Rejection region for chi square distribution 
+                dof = lags
+                chi2_alfa= stats.chi2.ppf(1-alpha,dof)
+                print('Rejection region starts at %f' % chi2_alfa)
+
+                if Q0_LBQ>chi2_alfa:        
+                    print('The null hypothesis is rejected')                
+                else: 
+                    print('The null hypothesis is accepted')
+
+                # Compute the p-value for the LBQ test
+                pval = 1 - stats.chi2.cdf(Q0_LBQ, lags)
+                print('p-value = %f' % pval)
 
         return
