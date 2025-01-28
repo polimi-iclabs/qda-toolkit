@@ -715,6 +715,7 @@ class Assumptions:
     -------
     None
     """
+
     def __init__(self, data):
         if isinstance(data, np.ndarray):
             warnings.warn(
@@ -725,60 +726,58 @@ class Assumptions:
             data = pd.Series(data)
         self.data = data.dropna()
 
-    def normality(self, test, qqplot=True):
+    def normality(self, qqplot=True, test='shapiro-wilk'):
         """Test the normality of the data.
 
         Parameters
         ----------
-        data : DataFrame
-            The data to test for normality.
-        
-        test : str
-            Type of test to perform: 'shapiro' or 'anderson'
+        qqplot : bool, optional
+            If True, plots the Q-Q plot. Default is True.
+        test : str, optional
+            Type of test to perform: 'shapiro-wilk' or 'anderson-darling'. Default is 'shapiro-wilk'.
 
         Returns
         -------
         None
         """
-        
-        if test == 'shapiro':
-            _, pval_SW_res = stats.shapiro(self.data)
-            print('Shapiro-Wilk test p-value = %.3f' % pval_SW_res)
-        
-        elif test == 'anderson':
-            anderson = stats.anderson(self.data, dist='norm')
-            # compute the p-value of the Anderson-Darling test
-            if anderson.statistic >= 0.6:
-                p_value_AD = np.exp(1.2937 - 5.709*anderson.statistic + 0.0186*(anderson.statistic**2))
-            elif anderson.statistic >= 0.34:
-                p_value_AD = np.exp(0.9177 - 4.279*anderson.statistic - 1.38*(anderson.statistic**2))
-            elif anderson.statistic >= 0.2:
-                p_value_AD = 1 - np.exp(-8.318 + 42.796*anderson.statistic - 59.938*(anderson.statistic**2))
-            else:
-                p_value_AD = 1 - np.exp(-13.436 + 101.14*anderson.statistic - 223.73*(anderson.statistic**2))
-            print('p-value of the Anderson-Darling test: %.3f' % p_value_AD)
 
-        else:
-            print("To visualize the p-value, please select the Normality test to perform:\n - Shapiro-Wilk test --> test = 'shapiro'\n - Anderson-Darling test --> test = 'anderson'")
-        
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
             plt.show()
 
+        if test == 'shapiro-wilk':
+            stat_SW, pval_SW = stats.shapiro(self.data)
+            print('Shapiro-Wilk test statistic = %.3f' % stat_SW)
+            print('Shapiro-Wilk test p-value = %.3f' % pval_SW)
+
+        elif test == 'anderson-darling':
+            anderson = stats.anderson(self.data, dist='norm')
+            stat_AD = anderson.statistic
+            # compute the p-value of the Anderson-Darling test
+            if stat_AD >= 0.6:
+                p_value_AD = np.exp(1.2937 - 5.709 * stat_AD + 0.0186 * (stat_AD ** 2))
+            elif stat_AD >= 0.34:
+                p_value_AD = np.exp(0.9177 - 4.279 * stat_AD - 1.38 * (stat_AD ** 2))
+            elif stat_AD >= 0.2:
+                p_value_AD = 1 - np.exp(-8.318 + 42.796 * stat_AD - 59.938 * (stat_AD ** 2))
+            else:
+                p_value_AD = 1 - np.exp(-13.436 + 101.14 * stat_AD - 223.73 * (stat_AD ** 2))
+            print('Anderson-Darling test statistic = %.3f' % stat_AD)
+            print('p-value of the Anderson-Darling test = %.3f' % p_value_AD)
+
         return
 
-    def independence(self, plots=True, lags=None):
+    def independence(self, plots=True, ac_test=None, lag=None):
         """Test the independence of the data.
 
         Parameters
         ----------
-        data : DataFrame
-            The data to test for independence.
-        
-        lags : int 
-            Parameter to indicate the independence test to perform (additionally to Runs test): 
-                If lags=1, Bartlett test
-                If lags>1, LBQ test
+        plots : bool, optional
+            If True, plots the ACF and PACF. Default is True.
+        ac_test : str, optional
+            Type of autocorrelation test to perform: 'bartlett' or 'lbq'. Default is None.
+        lag : int, optional
+            The lag to use for the autocorrelation test. Default is None.
 
         Returns
         -------
@@ -788,32 +787,32 @@ class Assumptions:
         if plots:
             # ACF and PACF
             fig, ax = plt.subplots(2, 1)
-            sgt.plot_acf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[0])
+            sgt.plot_acf(self.data, lags=int(len(self.data) / 3), zero=False, ax=ax[0])
             fig.subplots_adjust(hspace=0.5)
-            sgt.plot_pacf(self.data, lags = int(len(self.data)/3), zero=False, ax=ax[1], method = 'ywm')
+            sgt.plot_pacf(self.data, lags=int(len(self.data) / 3), zero=False, ax=ax[1], method='ywm')
             plt.show()
 
+        # Runs test
+        stat_runs, pval_runs = runstest_1samp(self.data, correction=False)
+        print('Runs test statistic = {:.3f}'.format(stat_runs))
+        print('Runs test p-value = {:.3f}\n'.format(pval_runs))
 
-        # Runs test (default)
-        _, pval_runs = runstest_1samp(self.data, correction=False)
-        print('Runs test p-value = {:.3f}'.format(pval_runs))
+        if lag is not None:
+            if ac_test == 'bartlett':
+                # Bartlett's test at lag 1
+                acf_values, _, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
+                rk = acf_values[lag]
+                test_stat = abs(rk) * np.sqrt(len(self.data))
+                p_value = 2 * (1 - stats.norm.cdf(test_stat))
+                print('Bartlett test statistic = {:.3f}'.format(test_stat))
+                print('Bartlett test p-value = {:.3f}'.format(p_value))
 
-        if lags is not None:
-
-            if lags == 1:
-                #Bartlett's test at lag 1
-                [acf_values, lbq, _] = acf(self.data, nlags = int(np.sqrt(len(self.data))), qstat=True, fft = False)
-                rk = acf_values[lags]
-                p_value = 2 * (1 - stats.norm.cdf(abs(rk) * np.sqrt(len(self.data))))
-                print('Bartlett test (at first lag) p-value = %f' % p_value)
-
-            if lags > 1:
-
-                # LBQ test:
-                [acf_values, lbq, _] = acf(self.data, nlags = int(np.sqrt(len(self.data))), qstat=True, fft = False)
-                Q0_LBQ = lbq[lags-1]
-
-                pval = 1 - stats.chi2.cdf(Q0_LBQ, lags)
-                print('LBQ test (at lag %i) p-value = %f' % (lags, pval))
+            elif ac_test == 'lbq':
+                # LBQ test
+                _, lbq, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
+                Q0_LBQ = lbq[lag - 1]
+                pval = 1 - stats.chi2.cdf(Q0_LBQ, lag)
+                print('LBQ test statistic = {:.3f}'.format(Q0_LBQ))
+                print('LBQ test p-value = {:.3f}'.format(pval))
 
         return
