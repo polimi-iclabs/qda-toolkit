@@ -725,21 +725,42 @@ class Assumptions:
             data = pd.Series(data)
         self.data = data.dropna()
 
-    def normality(self, qqplot=True):
+    def normality(self, test, qqplot=True):
         """Test the normality of the data.
 
         Parameters
         ----------
         data : DataFrame
             The data to test for normality.
+        
+        test : str
+            Type of test to perform: 'shapiro' or 'anderson'
 
         Returns
         -------
         None
         """
-        _, pval_SW_res = stats.shapiro(self.data)
-        print('Shapiro-Wilk test p-value = %.3f' % pval_SW_res)
+        
+        if test == 'shapiro':
+            _, pval_SW_res = stats.shapiro(self.data)
+            print('Shapiro-Wilk test p-value = %.3f' % pval_SW_res)
+        
+        elif test == 'anderson':
+            anderson = stats.anderson(self.data, dist='norm')
+            # compute the p-value of the Anderson-Darling test
+            if anderson.statistic >= 0.6:
+                p_value_AD = np.exp(1.2937 - 5.709*anderson.statistic + 0.0186*(anderson.statistic**2))
+            elif anderson.statistic >= 0.34:
+                p_value_AD = np.exp(0.9177 - 4.279*anderson.statistic - 1.38*(anderson.statistic**2))
+            elif anderson.statistic >= 0.2:
+                p_value_AD = 1 - np.exp(-8.318 + 42.796*anderson.statistic - 59.938*(anderson.statistic**2))
+            else:
+                p_value_AD = 1 - np.exp(-13.436 + 101.14*anderson.statistic - 223.73*(anderson.statistic**2))
+            print('p-value of the Anderson-Darling test: %.3f' % p_value_AD)
 
+        else:
+            print("To visualize the p-value, please select the Normality test to perform:\n - Shapiro-Wilk test --> test = 'shapiro'\n - Anderson-Darling test --> test = 'anderson'")
+        
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
             plt.show()
