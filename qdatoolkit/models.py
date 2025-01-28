@@ -703,6 +703,7 @@ class StepwiseRegression:
 
         return
 
+
 class Assumptions:
     """Test the normality and independence assumptions on data.
 
@@ -767,13 +768,15 @@ class Assumptions:
 
         return
 
-    def independence(self, plots=True, ac_test=None, lag=None):
+    def independence(self, runs_test=True, plots=True, ac_test=None, lag=None):
         """Test the independence of the data.
 
         Parameters
         ----------
         plots : bool, optional
             If True, plots the ACF and PACF. Default is True.
+        runs_test : bool, optional
+            If True, performs the runs test. Default is True.
         ac_test : str, optional
             Type of autocorrelation test to perform: 'bartlett' or 'lbq'. Default is None.
         lag : int, optional
@@ -784,6 +787,12 @@ class Assumptions:
         None
         """
 
+        if runs_test:
+            # Runs test
+            stat_runs, pval_runs = runstest_1samp(self.data, correction=False)
+            print('Runs test statistic = {:.3f}'.format(stat_runs))
+            print('Runs test p-value = {:.3f}\n'.format(pval_runs))
+
         if plots:
             # ACF and PACF
             fig, ax = plt.subplots(2, 1)
@@ -791,11 +800,6 @@ class Assumptions:
             fig.subplots_adjust(hspace=0.5)
             sgt.plot_pacf(self.data, lags=int(len(self.data) / 3), zero=False, ax=ax[1], method='ywm')
             plt.show()
-
-        # Runs test
-        stat_runs, pval_runs = runstest_1samp(self.data, correction=False)
-        print('Runs test statistic = {:.3f}'.format(stat_runs))
-        print('Runs test p-value = {:.3f}\n'.format(pval_runs))
 
         if lag is not None:
             if ac_test == 'bartlett':
