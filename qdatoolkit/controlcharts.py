@@ -514,7 +514,7 @@ class ControlCharts:
             data_XS['S_UCL'] = B4 * S_mean
             data_XS['S_LCL'] = B3 * S_mean
         else:
-            data_XS['S_CL'] = sigma
+            data_XS['S_CL'] = constants.getc4(n) * sigma
             data_XS['S_UCL'] = B6 * sigma
             data_XS['S_LCL'] = B5 * sigma
 
