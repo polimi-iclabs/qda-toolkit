@@ -795,10 +795,20 @@ class Assumptions:
 
         if plots:
             # ACF and PACF
-            fig, ax = plt.subplots(2, 1)
-            sgt.plot_acf(self.data, lags=int(len(self.data) / 3), zero=False, ax=ax[0])
-            fig.subplots_adjust(hspace=0.5)
-            sgt.plot_pacf(self.data, lags=int(len(self.data) / 3), zero=False, ax=ax[1], method='ywm')
+            max_lags = len(self.data) // 3 if len(self.data) // 3 <= 200 else 200
+            # Adjust the figure size based on max_lags
+            fig_size = (10, max(5, max_lags // 15))
+            fig, ax = plt.subplots(2, 1, figsize=fig_size)
+            # Plot ACF
+            sgt.plot_acf(self.data, lags=max_lags, zero=False, ax=ax[0])
+            ax[0].set_ylim(-1, 1)  # Adjust y-axis limits for better visibility
+            # Adjust the space between plots
+            fig.subplots_adjust(hspace=0.5 if max_lags <= 50 else 0.2)
+            # Plot PACF
+            sgt.plot_pacf(self.data, lags=max_lags, zero=False, ax=ax[1], method='ywm')
+            ax[1].set_ylim(-1, 1)  # Adjust y-axis limits for better visibility
+
+            # Show the plots
             plt.show()
 
         if lag is not None:
