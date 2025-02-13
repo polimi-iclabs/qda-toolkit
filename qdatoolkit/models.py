@@ -5,7 +5,7 @@ import statsmodels
 import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA as arimafromlib
 from statsmodels.sandbox.stats.runs import runstest_1samp
-from statsmodels.tsa.stattools import acf
+from statsmodels.tsa.stattools import acf, pacf
 import statsmodels.graphics.tsaplots as sgt
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -208,6 +208,7 @@ def ARIMAsummary(results):
     print(df_LBtest.to_string(index=False))
 
     return
+
 
 
 class Summary:
@@ -739,7 +740,10 @@ class Assumptions:
 
         Returns
         -------
-        None
+        stat : float
+            Test statistic.
+        p_value : float
+            P-value of the test.
         """
 
         if qqplot:
@@ -747,26 +751,24 @@ class Assumptions:
             plt.show()
 
         if test == 'shapiro-wilk':
-            stat_SW, pval_SW = stats.shapiro(self.data)
-            print('Shapiro-Wilk test statistic = %.3f' % stat_SW)
-            print('Shapiro-Wilk test p-value = %.3f' % pval_SW)
-
+            stat, p_value = stats.shapiro(self.data)
         elif test == 'anderson-darling':
-            anderson = stats.anderson(self.data, dist='norm')
-            stat_AD = anderson.statistic
-            # compute the p-value of the Anderson-Darling test
-            if stat_AD >= 0.6:
-                p_value_AD = np.exp(1.2937 - 5.709 * stat_AD + 0.0186 * (stat_AD ** 2))
-            elif stat_AD >= 0.34:
-                p_value_AD = np.exp(0.9177 - 4.279 * stat_AD - 1.38 * (stat_AD ** 2))
-            elif stat_AD >= 0.2:
-                p_value_AD = 1 - np.exp(-8.318 + 42.796 * stat_AD - 59.938 * (stat_AD ** 2))
+            result = stats.anderson(self.data, dist='norm')
+            stat = result.statistic
+            if stat >= 0.6:
+                p_value = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
+            elif stat >= 0.34:
+                p_value = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
+            elif stat >= 0.2:
+                p_value = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
             else:
-                p_value_AD = 1 - np.exp(-13.436 + 101.14 * stat_AD - 223.73 * (stat_AD ** 2))
-            print('Anderson-Darling test statistic = %.3f' % stat_AD)
-            print('p-value of the Anderson-Darling test = %.3f' % p_value_AD)
+                p_value = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+        else:
+            raise ValueError("Invalid test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
 
-        return
+        print(f'{test.capitalize()} test statistic = {stat:.3f}')
+        print(f'{test.capitalize()} test p-value = {p_value:.3f}')
+        return stat, p_value
 
     def independence(self, runs_test=True, plots=True, ac_test=None, lag=None):
         """Test the independence of the data.
@@ -784,49 +786,51 @@ class Assumptions:
 
         Returns
         -------
-        None
+        stat : float
+            Test statistic for runs test.
+        p_value : float
+            P-value for runs test.
+        stat_2 : float
+            Test statistic for autocorrelation test.
+        p_value_2 : float
+            P-value for autocorrelation test.
+        acf_values : array
+            Array of ACF values.
+        pacf_values : array
+            Array of PACF values.
         """
 
+        stat, p_value, stat_2, p_value_2 = None, None, None, None
+
         if runs_test:
-            # Runs test
-            stat_runs, pval_runs = runstest_1samp(self.data, correction=False)
-            print('Runs test statistic = {:.3f}'.format(stat_runs))
-            print('Runs test p-value = {:.3f}\n'.format(pval_runs))
+            stat, p_value = runstest_1samp(self.data, correction=False)
+            print(f'Runs test statistic = {stat:.3f}')
+            print(f'Runs test p-value = {p_value:.3f}\n')
 
         if plots:
-            # ACF and PACF
-            max_lags = len(self.data) // 3 if len(self.data) // 3 <= 200 else 200
-            # Adjust the figure size based on max_lags
-            fig_size = (10, max(5, max_lags // 15))
-            fig, ax = plt.subplots(2, 1, figsize=fig_size)
-            # Plot ACF
+            max_lags = min(len(self.data) // 3, 200)
+            fig, ax = plt.subplots(2, 1, figsize=(10, max(5, max_lags // 15)))
             sgt.plot_acf(self.data, lags=max_lags, zero=False, ax=ax[0])
-            ax[0].set_ylim(-1, 1)  # Adjust y-axis limits for better visibility
-            # Adjust the space between plots
+            ax[0].set_ylim(-1, 1)
             fig.subplots_adjust(hspace=0.5 if max_lags <= 50 else 0.2)
-            # Plot PACF
             sgt.plot_pacf(self.data, lags=max_lags, zero=False, ax=ax[1], method='ywm')
-            ax[1].set_ylim(-1, 1)  # Adjust y-axis limits for better visibility
-
-            # Show the plots
+            ax[1].set_ylim(-1, 1)
             plt.show()
+            acf_values = acf(self.data, fft=False)
+            pacf_values = pacf(self.data)
 
         if lag is not None:
             if ac_test == 'bartlett':
-                # Bartlett's test at lag 1
-                acf_values, _, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
                 rk = acf_values[lag]
-                test_stat = abs(rk) * np.sqrt(len(self.data))
-                p_value = 2 * (1 - stats.norm.cdf(test_stat))
-                print('Bartlett test statistic = {:.3f}'.format(test_stat))
-                print('Bartlett test p-value = {:.3f}'.format(p_value))
-
+                stat_2 = abs(rk) * np.sqrt(len(self.data))
+                p_value_2 = 2 * (1 - stats.norm.cdf(stat_2))
+                print(f'Bartlett test statistic = {stat_2:.3f}')
+                print(f'Bartlett test p-value = {p_value_2:.3f}')
             elif ac_test == 'lbq':
-                # LBQ test
-                _, lbq, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
-                Q0_LBQ = lbq[lag - 1]
-                pval = 1 - stats.chi2.cdf(Q0_LBQ, lag)
-                print('LBQ test statistic = {:.3f}'.format(Q0_LBQ))
-                print('LBQ test p-value = {:.3f}'.format(pval))
+                _, stat_2, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
+                Q0_LBQ = stat_2[lag - 1]
+                p_value_2 = 1 - stats.chi2.cdf(Q0_LBQ, lag)
+                print(f'LBQ test statistic = {Q0_LBQ:.3f}')
+                print(f'LBQ test p-value = {p_value_2:.3f}')
 
-        return
+        return stat, p_value, stat_2, p_value_2, acf_values, pacf_values
