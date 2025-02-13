@@ -801,6 +801,7 @@ class Assumptions:
         """
 
         stat, p_value, stat_2, p_value_2 = None, None, None, None
+        acf_values, pacf_values = None, None
 
         if runs_test:
             stat, p_value = runstest_1samp(self.data, correction=False)
