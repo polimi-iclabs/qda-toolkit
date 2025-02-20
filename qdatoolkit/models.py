@@ -770,7 +770,7 @@ class Assumptions:
         print(f'{test.capitalize()} test p-value = {p_value:.3f}')
         return stat, p_value
 
-    def independence(self, runs_test=True, plots=True, ac_test=None, lag=None):
+    def independence(self, plotit=True, ac_test='runs', lag=None):
         """Test the independence of the data.
 
         Parameters
@@ -780,35 +780,45 @@ class Assumptions:
         runs_test : bool, optional
             If True, performs the runs test. Default is True.
         ac_test : str, optional
-            Type of autocorrelation test to perform: 'bartlett' or 'lbq'. Default is None.
+            Type of autocorrelation test to perform: 'runs', 'bartlett' or 'lbq'. Default is 'runs'.
         lag : int, optional
-            The lag to use for the autocorrelation test. Default is None.
+            The lag to use for the autocorrelation test. Default is None. 
+            Must be specified if ac_test is 'bartlett' or 'lbq'.
 
         Returns
         -------
         stat : float
-            Test statistic for runs test.
+            Test statistic for selected ac_test test.
         p_value : float
-            P-value for runs test.
-        stat_2 : float
-            Test statistic for autocorrelation test.
-        p_value_2 : float
-            P-value for autocorrelation test.
-        acf_values : array
-            Array of ACF values.
-        pacf_values : array
-            Array of PACF values.
+            P-value for selected ac_test test.
+
         """
 
-        stat, p_value, stat_2, p_value_2 = None, None, None, None
-        acf_values, pacf_values = None, None
+        stat, p_value = None, None
 
-        if runs_test:
+        # check if the lag is specified for the Bartlett or LBQ test
+        if ac_test in ['bartlett', 'lbq'] and lag is None:
+            raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
+
+        if ac_test == 'runs':
             stat, p_value = runstest_1samp(self.data, correction=False)
-            print(f'Runs test statistic = {stat:.3f}')
-            print(f'Runs test p-value = {p_value:.3f}\n')
+            print(f'{ac_test} test statistic = {stat:.3f}')
+            print(f'{ac_test} test p-value = {p_value:.3f}\n')
 
-        if plots:
+        elif ac_test == 'bartlett':
+            rk = acf_values[lag]
+            stat = abs(rk) * np.sqrt(len(self.data))
+            p_value = 2 * (1 - stats.norm.cdf(stat_2))
+            print(f'Bartlett test statistic = {stat_2:.3f}')
+            print(f'Bartlett test p-value = {p_value:.3f}')
+        elif ac_test == 'lbq':
+            _, stat_lbq, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
+            stat = stat_lbq[lag - 1]
+            p_value = 1 - stats.chi2.cdf(stat, lag)
+            print(f'LBQ test statistic = {stat:.3f}')
+            print(f'LBQ test p-value = {p_value:.3f}')
+
+        if plotit:
             max_lags = min(len(self.data) // 3, 200)
             fig, ax = plt.subplots(2, 1, figsize=(10, max(5, max_lags // 15)))
             sgt.plot_acf(self.data, lags=max_lags, zero=False, ax=ax[0])
@@ -820,18 +830,4 @@ class Assumptions:
             acf_values = acf(self.data, fft=False)
             pacf_values = pacf(self.data)
 
-        if lag is not None:
-            if ac_test == 'bartlett':
-                rk = acf_values[lag]
-                stat_2 = abs(rk) * np.sqrt(len(self.data))
-                p_value_2 = 2 * (1 - stats.norm.cdf(stat_2))
-                print(f'Bartlett test statistic = {stat_2:.3f}')
-                print(f'Bartlett test p-value = {p_value_2:.3f}')
-            elif ac_test == 'lbq':
-                _, stat_2, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
-                Q0_LBQ = stat_2[lag - 1]
-                p_value_2 = 1 - stats.chi2.cdf(Q0_LBQ, lag)
-                print(f'LBQ test statistic = {Q0_LBQ:.3f}')
-                print(f'LBQ test p-value = {p_value_2:.3f}')
-
-        return stat, p_value, stat_2, p_value_2, acf_values, pacf_values
+        return stat, p_value
