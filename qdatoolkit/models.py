@@ -805,8 +805,7 @@ class Assumptions:
             if nlags > len(self.data):
                 raise ValueError("The number of lags must be less than the length of the data.")
         
-        acf_values = acf(self.data, nlags = nlags, qstat=True, fft = False)[0]
-        pacf_values = pacf(self.data)
+        acf_values, stat_lbq, _ = acf(self.data, nlags = nlags, qstat=True, fft = False)
 
         # check if the lag is specified for the Bartlett or LBQ test
         if ac_test in ['bartlett', 'lbq'] and lag is None:
@@ -825,7 +824,6 @@ class Assumptions:
             print(f'Bartlett test p-value = {p_value:.3f}')
             
         elif ac_test == 'lbq':
-            _, stat_lbq, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
             stat = stat_lbq[lag - 1]
             p_value = 1 - stats.chi2.cdf(stat, lag)
             print(f'LBQ test statistic = {stat:.3f}')
