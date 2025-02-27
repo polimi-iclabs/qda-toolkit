@@ -770,7 +770,7 @@ class Assumptions:
         print(f'{test.capitalize()} test p-value = {p_value:.3f}')
         return stat, p_value
 
-    def independence(self, plotit=True, ac_test='runs', lag=None):
+    def independence(self, plotit=True, ac_test='runs', lag=None, nlags=None):
         """Test the independence of the data.
 
         Parameters
@@ -784,6 +784,8 @@ class Assumptions:
         lag : int, optional
             The lag to use for the autocorrelation test. Default is None. 
             Must be specified if ac_test is 'bartlett' or 'lbq'.
+        nlags : int, optional
+            The number of lags to use for the ACF and PACF plots. Default is None.
 
         Returns
         -------
@@ -796,21 +798,32 @@ class Assumptions:
 
         stat, p_value = None, None
 
+        if nlags is None:
+            nlags = min(len(self.data) // 3, 200)
+        else:
+            # check if the number of lags is less than the length of the data
+            if nlags > len(self.data):
+                raise ValueError("The number of lags must be less than the length of the data.")
+        
+        acf_values = acf(self.data, nlags = nlags, qstat=True, fft = False)[0]
+        pacf_values = pacf(self.data)
+
         # check if the lag is specified for the Bartlett or LBQ test
         if ac_test in ['bartlett', 'lbq'] and lag is None:
             raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
 
         if ac_test == 'runs':
             stat, p_value = runstest_1samp(self.data, correction=False)
-            print(f'{ac_test} test statistic = {stat:.3f}')
-            print(f'{ac_test} test p-value = {p_value:.3f}\n')
+            print(f'Runs test statistic = {stat:.3f}')
+            print(f'Runs test p-value = {p_value:.3f}\n')
 
         elif ac_test == 'bartlett':
             rk = acf_values[lag]
-            stat = abs(rk) * np.sqrt(len(self.data))
-            p_value = 2 * (1 - stats.norm.cdf(stat_2))
-            print(f'Bartlett test statistic = {stat_2:.3f}')
+            stat = rk
+            p_value = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data))))
+            print(f'Bartlett test statistic = {stat:.3f}')
             print(f'Bartlett test p-value = {p_value:.3f}')
+            
         elif ac_test == 'lbq':
             _, stat_lbq, _ = acf(self.data, nlags=int(np.sqrt(len(self.data))), qstat=True, fft=False)
             stat = stat_lbq[lag - 1]
@@ -819,15 +832,12 @@ class Assumptions:
             print(f'LBQ test p-value = {p_value:.3f}')
 
         if plotit:
-            max_lags = min(len(self.data) // 3, 200)
-            fig, ax = plt.subplots(2, 1, figsize=(10, max(5, max_lags // 15)))
-            sgt.plot_acf(self.data, lags=max_lags, zero=False, ax=ax[0])
+            fig, ax = plt.subplots(2, 1, figsize=(10, max(5, nlags // 15)))
+            sgt.plot_acf(self.data, lags=nlags, zero=False, ax=ax[0])
             ax[0].set_ylim(-1, 1)
-            fig.subplots_adjust(hspace=0.5 if max_lags <= 50 else 0.2)
-            sgt.plot_pacf(self.data, lags=max_lags, zero=False, ax=ax[1], method='ywm')
+            fig.subplots_adjust(hspace=0.5 if nlags <= 50 else 0.2)
+            sgt.plot_pacf(self.data, lags=nlags, zero=False, ax=ax[1], method='ywm')
             ax[1].set_ylim(-1, 1)
             plt.show()
-            acf_values = acf(self.data, fft=False)
-            pacf_values = pacf(self.data)
 
         return stat, p_value
