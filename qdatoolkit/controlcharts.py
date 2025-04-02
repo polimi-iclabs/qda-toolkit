@@ -722,9 +722,9 @@ class ControlCharts:
 
         if plotit == True:
             # Plot the control limits
-            plt.step(df_EWMA['UCL'], color='firebrick', linewidth=1, where='mid')
+            plt.step(df_EWMA.index, df_EWMA['UCL'], color='firebrick', linewidth=1, where='mid')
             plt.plot(df_EWMA['CL'], color='g', linewidth=1)
-            plt.step(df_EWMA['LCL'], color='firebrick', linewidth=1, where='mid')
+            plt.step(df_EWMA.index, df_EWMA['LCL'], color='firebrick', linewidth=1, where='mid')
             # Plot the chart
             plt.title('EWMA chart of %s (lambda=%.2f)' % (col_name, lambda_))
             plt.plot(df_EWMA['z'], color='b', linestyle='-', marker='o')
@@ -951,7 +951,7 @@ class ControlCharts:
             plt.title('P-Chart')
             # add the values of the control limits on the right side of the plot
             plt.text(len(original_df)+.5, original_df['P_UCL'].iloc[0], 'UCL = {:.4f}'.format(original_df['P_UCL'].iloc[-1]), verticalalignment='center')
-            plt.text(len(original_df)+.5, original_df['p'].mean(), r'$\bar{p}$' + ' = {:.4f}'.format(original_df['p'].mean()), verticalalignment='center')
+            plt.text(len(original_df)+.5, mean, r'$\bar{p}$' + ' = {:.4f}'.format(mean), verticalalignment='center')
             plt.text(len(original_df)+.5, original_df['P_LCL'].iloc[0], 'LCL = {:.4f}'.format(original_df['P_LCL'].iloc[-1]), verticalalignment='center')
             # plt.grid(True, linestyle='--', alpha=0.6)
             plt.plot(original_df['P_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
@@ -960,7 +960,7 @@ class ControlCharts:
             plt.tight_layout()
             plt.show()
             
-            if subset_size < len(data):
+            if subset_size < len(original_df):
                 plt.vlines(subset_size-.5, original_df['P_LCL'].iloc[-1], original_df['P_UCL'].iloc[-1], color='k', linestyle='--')
 
         return original_df
