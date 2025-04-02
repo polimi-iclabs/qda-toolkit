@@ -722,9 +722,9 @@ class ControlCharts:
 
         if plotit == True:
             # Plot the control limits
-            plt.plot(df_EWMA['UCL'], color='firebrick', linewidth=1)
+            plt.step(df_EWMA['UCL'], color='firebrick', linewidth=1, where='mid')
             plt.plot(df_EWMA['CL'], color='g', linewidth=1)
-            plt.plot(df_EWMA['LCL'], color='firebrick', linewidth=1)
+            plt.step(df_EWMA['LCL'], color='firebrick', linewidth=1, where='mid')
             # Plot the chart
             plt.title('EWMA chart of %s (lambda=%.2f)' % (col_name, lambda_))
             plt.plot(df_EWMA['z'], color='b', linestyle='-', marker='o')
@@ -878,7 +878,7 @@ class ControlCharts:
 
         return sample_mean
 
-    def P(original_df, defects_col, subgroup_size, known_params=None, plotit=True):
+    def P(original_df, defects_col, subgroup_size, subset_size=None, known_params=None, plotit=True):
 
         '''
         This function plots the P chart of a DataFrame
@@ -895,9 +895,11 @@ class ControlCharts:
             The name of the column in the DataFrame that contains the subgroup size 
             OR an int equal to the size of the subgroup. 
             If subgroup_size is 1, the function will assume that the defects_col contains the proportion of defects.
-        known_params : tuple, optional
-            The values of the parameters mean and stdev. The default is None.
-            If None, the function will calculate the mean and stdev from the data.
+        sample_size : int
+            The number of rows to be used for the P chart. Default is None and all rows are used.
+        known_params : float, optional
+            The value of the mean proportion. The default is None.
+            If None, the function will calculate the mean proportion from the data.
         plotit : bool, optional
             If True, the function will plot the P chart. The default is True.
         '''
@@ -917,11 +919,17 @@ class ControlCharts:
         # Calculate the proportion of defects
         original_df['p'] = original_df[defects_col] / subgroup_size
 
+        if subset_size is None:
+            subset_size = len(original_df)
+        elif subset_size > len(original_df):
+            raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
+
         if known_params is not None:
-            mean, stdev = known_params
+            mean = known_params
         else:
-            mean = original_df['p'].mean()
-            stdev = np.sqrt((mean * (1 - mean)) / subgroup_size)
+            mean = original_df['p'].iloc[:subset_size].mean()
+
+        stdev = np.sqrt((mean * (1 - mean)) / subgroup_size)
 
         # UCL, LCL, CL
         original_df['std_dev'] = stdev
@@ -949,7 +957,13 @@ class ControlCharts:
             plt.plot(original_df['P_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
             # set the x-axis limits
             plt.xlim(-1, len(original_df))
+            plt.tight_layout()
             plt.show()
+            
+            if subset_size < len(data):
+                plt.vlines(subset_size-.5, original_df['P_LCL'].iloc[-1], original_df['P_UCL'].iloc[-1], color='k', linestyle='--')
+
+        return original_df
     
 
 class constants:
