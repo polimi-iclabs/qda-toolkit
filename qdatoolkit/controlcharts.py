@@ -878,6 +878,80 @@ class ControlCharts:
 
         return sample_mean
 
+    def P(original_df, defects_col, subgroup_size, known_params=None, plotit=True):
+
+        '''
+        This function plots the P chart of a DataFrame
+        and returns the DataFrame with the control limits and alarm rules.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+        defects_col : str
+            The name of the column in the DataFrame that contains the number of defects.
+            In case you only have the proportion of defects, set the subgroup_size to 1.
+        subgroup_size : str or int, optional
+            The name of the column in the DataFrame that contains the subgroup size 
+            OR an int equal to the size of the subgroup. 
+            If subgroup_size is 1, the function will assume that the defects_col contains the proportion of defects.
+        known_params : tuple, optional
+            The values of the parameters mean and stdev. The default is None.
+            If None, the function will calculate the mean and stdev from the data.
+        plotit : bool, optional
+            If True, the function will plot the P chart. The default is True.
+        '''
+        if subgroup_size is None:
+            raise ValueError('The subgroup size column must be provided.')
+        
+        if subgroup_size == 1:
+            # check if the values in defects_col are between 0 and 1
+            if original_df[defects_col].min() < 0 or original_df[defects_col].max() > 1:
+                raise ValueError('The values in the defects column must be between 0 and 1.')
+
+        # If subgroup_size_col is an int and not a column name, set the subgroup size to that value
+        if isinstance(subgroup_size, int):
+            subgroup_size = subgroup_size
+        else:
+            subgroup_size = original_df[subgroup_size]
+        # Calculate the proportion of defects
+        original_df['p'] = original_df[defects_col] / subgroup_size
+
+        if known_params is not None:
+            mean, stdev = known_params
+        else:
+            mean = original_df['p'].mean()
+            stdev = np.sqrt((mean * (1 - mean)) / subgroup_size)
+
+        # UCL, LCL, CL
+        original_df['std_dev'] = stdev
+        original_df['P_CL'] = mean
+        original_df['P_UCL'] = original_df['P_CL'] + 3 * original_df['std_dev']
+        original_df['P_LCL'] = original_df['P_CL'] - 3 * original_df['std_dev']
+        original_df['P_LCL'] = original_df['P_LCL'].clip(lower=0)  # LCL cannot be <0
+        original_df['P_TEST1'] = np.where((original_df['p'] > original_df['P_UCL']) | (original_df['p'] < original_df['P_LCL']), original_df['p'], np.nan)
+
+        # p-Chart
+        if plotit:
+            plt.figure()
+            plt.plot(original_df['p'], marker='o', color='blue')
+            plt.step(original_df.index, original_df['P_CL'], where='mid', color='g', linestyle='-', linewidth=1)
+            plt.step(original_df.index, original_df['P_UCL'], where='mid', color='firebrick', linestyle='-', linewidth=1)
+            plt.step(original_df.index, original_df['P_LCL'], where='mid', color='firebrick', linestyle='-', linewidth=1)
+            plt.xlabel('Sample')
+            plt.ylabel('Proportion')
+            plt.title('P-Chart')
+            # add the values of the control limits on the right side of the plot
+            plt.text(len(original_df)+.5, original_df['P_UCL'].iloc[0], 'UCL = {:.4f}'.format(original_df['P_UCL'].iloc[-1]), verticalalignment='center')
+            plt.text(len(original_df)+.5, original_df['p'].mean(), r'$\bar{p}$' + ' = {:.4f}'.format(original_df['p'].mean()), verticalalignment='center')
+            plt.text(len(original_df)+.5, original_df['P_LCL'].iloc[0], 'LCL = {:.4f}'.format(original_df['P_LCL'].iloc[-1]), verticalalignment='center')
+            # plt.grid(True, linestyle='--', alpha=0.6)
+            plt.plot(original_df['P_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            # set the x-axis limits
+            plt.xlim(-1, len(original_df))
+            plt.show()
+    
+
 class constants:
     @staticmethod
     def getd2(n=None):
