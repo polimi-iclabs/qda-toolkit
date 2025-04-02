@@ -957,11 +957,13 @@ class ControlCharts:
             plt.plot(original_df['P_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
             # set the x-axis limits
             plt.xlim(-1, len(original_df))
-            plt.tight_layout()
-            plt.show()
             
             if subset_size < len(original_df):
                 plt.vlines(subset_size-.5, original_df['P_LCL'].iloc[-1], original_df['P_UCL'].iloc[-1], color='k', linestyle='--')
+
+            plt.tight_layout()
+            plt.show()
+            
 
         return original_df
     
