@@ -561,27 +561,27 @@ class StepwiseRegression:
         self.y = y
         self.variables_to_include = []
 
-        # fit the initial models with one independent variable at a time
         print('Stepwise Regression')
         print('\n######################################')
         k = 1
         print('### Step %d' % k)
         print('-------------------')
-        self.forward_selection()
 
-        # check if self.variables_to_include is empty
-        if len(self.variables_to_include) == 0:
-            raise ValueError('All predictors have p-values greater than the alpha_to_enter level. No model was selected.')
+        if self.direction == 'backward':
+            self.variables_to_include = list(range(self.X.shape[1]))
+            X_test = self.X.iloc[:, self.variables_to_include]
+            if self.add_constant:
+                X_test = sm.add_constant(X_test)
+            self.model_fit = sm.OLS(self.y, X_test).fit()
 
-        while self.break_loop == False:
-            k += 1
-            print('\n######################################')
-            print('### Step %d' % k)
-            print('-------------------')
-            if self.direction == 'both':
+        while not self.break_loop:
+            if self.direction == 'forward':
                 self.forward_selection()
-                print('-------------------')
-                if self.break_loop == False:
+            elif self.direction == 'backward':
+                self.backward_elimination()
+            elif self.direction == 'both':
+                self.forward_selection()
+                if not self.break_loop:
                     self.backward_elimination()
             else:
                 raise ValueError('The direction must be either "both", "forward", or "backward".')
@@ -589,6 +589,12 @@ class StepwiseRegression:
             if k == self.max_iterations:
                 self.break_loop = True
                 print('Maximum number of iterations reached.')
+
+            if not self.break_loop:
+                k += 1
+                print('\n######################################')
+                print('### Step %d' % k)
+                print('-------------------')
 
         return self
 
@@ -664,7 +670,9 @@ class StepwiseRegression:
 
         if len(testing_variables) == len(original_variables):
             print('\nNo predictor removed.')
-            return(self)
+            if self.direction == 'backward':
+                self.break_loop = True
+            return self
 
         X_test = self.X.iloc[:, testing_variables]
 
