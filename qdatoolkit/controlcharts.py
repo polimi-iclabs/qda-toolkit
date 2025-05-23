@@ -821,7 +821,7 @@ class ControlCharts:
             else:
                 # short range estimator
                 # Create the V matrix
-                V = sample_mean[col_names].diff().dropna()
+                V = sample_mean[col_names].iloc[:m].diff().dropna()
 
                 # Calculate the short range estimator S2
                 S = 1/2 * V.transpose().dot(V) / (m-1)
