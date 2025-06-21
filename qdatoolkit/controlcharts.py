@@ -845,8 +845,6 @@ class ControlCharts:
 
         # calculate the inverse of the covariance matrix
         S_inv = np.linalg.inv(S)
-        print(S)
-        print(sample_mean[col_names])
 
         for i in range(len(sample_mean)):
             sample_mean['T2'].iloc[i] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
