@@ -820,8 +820,8 @@ class ControlCharts:
                 UCL2 = UCL1
             else:
                 # short range estimator
-                # Create the V matrix
-                V = sample_mean[col_names].diff().dropna()
+                # Create the V matrix using the first m samples
+                V = sample_mean[col_names].iloc[:m].diff().dropna()
 
                 # Calculate the short range estimator S2
                 S = 1/2 * V.transpose().dot(V) / (m-1)
@@ -845,6 +845,8 @@ class ControlCharts:
 
         # calculate the inverse of the covariance matrix
         S_inv = np.linalg.inv(S)
+        print(S)
+        print(sample_mean[col_names])
 
         for i in range(len(sample_mean)):
             sample_mean['T2'].iloc[i] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
