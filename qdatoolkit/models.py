@@ -126,8 +126,8 @@ def ARIMAsummary(results):
     """
 
     # Set the precision of the output
-    np.set_printoptions(precision=4, suppress=True)
-    pd.options.display.precision = 4
+    np.set_printoptions(precision=5, suppress=True)
+    pd.options.display.precision = 5
 
     # Extract information from the result object
     terms = results.param_names
@@ -169,12 +169,18 @@ def ARIMAsummary(results):
     # Print the information in a similar format to Minitab
     print("\nFINAL ESTIMATES OF PARAMETERS")
     print("-------------------------------")
-    # make a dataframe to store the results
+
+    # AR constant coefficient adjustment:
+    if (ar_order != 0) & (diff_order == 0) & (ma_order == 0):
+        AR_coefficients = coefficients[1 : ar_order + 1]
+        ARIMA_constant = coefficients[0]
+        adjusted_constant = ARIMA_constant * (1 - AR_coefficients.sum())
+        coefficients[0] = adjusted_constant
 
     df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
-    df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
-    print(df_coefficients.to_string(index=False))
+    df_coefficients.style.format({'Coef': '{:.6f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
 
+    print(df_coefficients.to_string(index=False))
 
     # Print the ANOVA table
     print("\nRESIDUAL SUM OF SQUARES")
@@ -347,8 +353,8 @@ class Summary:
         """
 
         # Set the precision of the output
-        np.set_printoptions(precision=4, suppress=True)
-        pd.options.display.precision = 4
+        np.set_printoptions(precision=5, suppress=True)
+        pd.options.display.precision = 5
 
         # Extract information from the result object
         terms = results.param_names
@@ -390,10 +396,17 @@ class Summary:
         # Print the information in a similar format to Minitab
         print("\nFINAL ESTIMATES OF PARAMETERS")
         print("-------------------------------")
-        # make a dataframe to store the results
+
+        # AR constant coefficient adjustment:
+        if (ar_order != 0) & (diff_order == 0) & (ma_order == 0):
+            AR_coefficients = coefficients[1 : ar_order + 1]
+            ARIMA_constant = coefficients[0]
+            adjusted_constant = ARIMA_constant * (1 - AR_coefficients.sum())
+            coefficients[0] = adjusted_constant
 
         df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
-        df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
+        df_coefficients.style.format({'Coef': '{:.6f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
+
         print(df_coefficients.to_string(index=False))
 
 
