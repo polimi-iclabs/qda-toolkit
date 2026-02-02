@@ -6,210 +6,17 @@ import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA as arimafromlib
 from statsmodels.sandbox.stats.runs import runstest_1samp
 from statsmodels.tsa.stattools import acf, pacf
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 import statsmodels.graphics.tsaplots as sgt
 import matplotlib.pyplot as plt
 from scipy import stats
 import warnings
 
 def summary(results):
-    """Prints a summary of the regression results.
-
-    Parameters
-    ----------
-    results : RegressionResults object
-        The results of a regression model.
-
-    Returns
-    -------
-    None
-    """
-
-    # Set the precision of the output
-    np.set_printoptions(precision=4, suppress=True)
-    pd.options.display.precision = 4
-
-    # Extract information from the result object
-    terms = results.model.exog_names
-    coefficients = results.params
-    std_errors = results.bse
-    t_values = results.tvalues
-    p_values = results.pvalues
-    #r_squared = results.rsquared
-    #adjusted_r_squared = results.rsquared_adj
-
-    # Print the regression equation
-    print("REGRESSION EQUATION")
-    print("-------------------")
-    equation = ("%s = " % results.model.endog_names)
-    for i in range(len(coefficients)):
-        if results.model.exog_names[i] == 'Intercept':
-            equation += "%.3f" % coefficients[i]
-        else:
-            if coefficients[i] > 0:
-                equation += " + %.3f %s" % (coefficients[i], terms[i])
-            else:
-                equation += " %.3f %s" % (coefficients[i], terms[i])
-    print(equation)
-
-    # Print the information in a similar format to Minitab
-    print("\nCOEFFICIENTS")
-    print("------------")
-    # make a dataframe to store the results
-
-    df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values})
-    df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
-    print(df_coefficients.to_string(index=False))
-
-    # Print the R-squared and adjusted R-squared
-    print("\nMODEL SUMMARY")
-    print("-------------")
-    # compute the standard deviation of the distance between the data values and the fitted values
-    S = np.std(results.resid, ddof=len(terms))
-    # make a dataframe to store the results
-    df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
-    print(df_model_summary.to_string(index=False))
-
-    # Print the ANOVA table
-    print("\nANALYSIS OF VARIANCE")
-    print("---------------------")
-    # make a dataframe with the column names and no data
-    df_anova = pd.DataFrame(columns=['Source', 'DF', 'Adj SS', 'Adj MS', 'F-Value', 'P-Value'])
-    # add the rows of data
-    df_anova.loc[0] = ['Regression', results.df_model, results.mse_model * results.df_model, results.mse_model, results.fvalue, results.f_pvalue]
-    jj = 1
-    for term in terms:
-        if term != 'Intercept':
-            # perform the f-test for the term
-            f_test = results.f_test(term + '= 0')
-            df_anova.loc[jj] = [term, f_test.df_num, f_test.fvalue * results.mse_resid * f_test.df_num, f_test.fvalue * results.mse_resid, f_test.fvalue, f_test.pvalue]
-            jj += 1
-
-    df_anova.loc[jj] = ['Error', results.df_resid, results.mse_resid * results.df_resid, results.mse_resid, np.nan, np.nan]
-
-    '''
-    # Lack-of-fit
-    # compute the number of levels in the independent variables 
-    n_levels = results.df_resid
-    for term in terms:
-        if term != 'Intercept':
-            n_levels = np.minimum(n_levels, len(data[term].unique())
-
-    if n_levels < results.df_resid:
-        dof_lof = n_levels - len(terms)
-        dof_pe = results.df_resid - n_levels
-        # compute the SSE for the pure error term
-        for 
-
-
-        df_anova.loc[jj + 1] = ['Lack-of-fit', n_levels - len(terms), np.nan, np.nan, np.nan, np.nan]
-    '''
-
-    df_anova.loc[jj + 1] = ['Total', results.df_model + results.df_resid, results.mse_total * (results.df_model + results.df_resid), np.nan, np.nan, np.nan]
-
-    print(df_anova.to_string(index=False))
-
-    return
-
+    return Summary.auto(results)
 
 def ARIMAsummary(results):
-
-    """Prints a summary of the ARIMA results.
-
-    Parameters
-    ----------
-    results : ARIMA object
-        The results of an ARIMA.
-
-    Returns
-    -------
-    None
-    """
-
-    # Set the precision of the output
-    np.set_printoptions(precision=4, suppress=True)
-    pd.options.display.precision = 4
-
-    # Extract information from the result object
-    terms = results.param_names
-    coefficients = results.params
-    std_errors = results.bse
-    t_values = results.tvalues
-    p_values = results.pvalues
-    n_coefficients = len(coefficients) - 1 #because models givers an additional information on sigma^2 in the list of coefficients
-
-
-    # get the order of the model
-    n_model = results.nobs
-    ar_order = results.model.order[0]
-    ma_order = results.model.order[2]
-    diff_order = results.model.order[1]
-    order_model = results.model.order
-    order_model_flag = sum(order_model) > 0
-    max_order=np.max(results.model.order)
-
-    #get seasonal order vector
-    so_model = results.model.seasonal_order
-    DIFF_seasonal_order = so_model[1]
-    seasonal_model_flag = so_model[3] > 0
-
-
-    #Model's degrees of freedom
-    df_model = (results.nobs - diff_order - DIFF_seasonal_order) - (len(results.params) - 1) #degrees of freedom for the model: (n - d - D) - estimated parameters(p, q, P, Q, constant term)
-
-    print("---------------------")
-    print("ARIMA MODEL RESULTS")
-    print("---------------------")
-
-    if order_model_flag:
-        print(f"ARIMA model order: p={ar_order}, d={diff_order}, q={ma_order}")
-    if seasonal_model_flag:
-        print(f"Seasonal ARIMA model fit with period {so_model[3]} and order: P={so_model[0]}, D={so_model[1]}, Q={so_model[2]}")
-
-
-    # Print the information in a similar format to Minitab
-    print("\nFINAL ESTIMATES OF PARAMETERS")
-    print("-------------------------------")
-    # make a dataframe to store the results
-
-    df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
-    df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
-    print(df_coefficients.to_string(index=False))
-
-
-    # Print the ANOVA table
-    print("\nRESIDUAL SUM OF SQUARES")
-    print("-------------------------")
-    # make a dataframe with the column names and no data
-    df_rss = pd.DataFrame(columns=['DF', 'SS', 'MS'])
-    # add the rows of data
-    SSE = np.sum(results.resid[max_order:]**2)
-
-    df_rss.loc[0] = [df_model, SSE, SSE/df_model]
-    print(df_rss.to_string(index=False))
-
-
-    # Print the information in a similar format to Minitab for LBQ test
-    print("\nLjung-Box Chi-Square Statistics")
-    print("----------------------------------")
-    if len(results.resid[max_order:]) > 48:
-        lagvalues = np.array([12, 24, 36, 48])
-    elif len(results.resid[max_order:]) > 36:
-        lagvalues = np.array([12, 24, 36])
-    elif len(results.resid[max_order:]) > 24:
-        lagvalues = np.array([12, 24])
-    elif len(results.resid[max_order:]) > 12:
-        lagvalues = np.array([12])
-    else:
-        lagvalues = int(np.sqrt(len(results.resid[max_order:])))
-    LBQ=acorr_ljungbox(results.resid[max_order:], lags=lagvalues, boxpierce=True)
-
-    df_LBtest = pd.DataFrame({'Lag': lagvalues, 'Chi-Square': LBQ.lb_stat, 'P-Value': LBQ.lb_pvalue})
-    df_LBtest.style.format({'Lag': '{:.3f}', 'Chi-Square test': '{:.3f}', 'P-Value': '{:.3f}'})
-    print(df_LBtest.to_string(index=False))
-
-    return
-
-
+    return Summary.auto(results)
 
 class Summary:
 
@@ -255,8 +62,9 @@ class Summary:
         std_errors = results.bse
         t_values = results.tvalues
         p_values = results.pvalues
-        #r_squared = results.rsquared
-        #adjusted_r_squared = results.rsquared_adj
+        vifs = [variance_inflation_factor(results.model.exog, i) for i in range(len(terms))]
+        if terms[0]=='const':
+            vifs[0]=""
 
         # Print the regression equation
         print("REGRESSION EQUATION")
@@ -272,62 +80,77 @@ class Summary:
                     equation += " %.3f %s" % (coefficients[i], terms[i])
         print(equation)
 
-        # Print the information in a similar format to Minitab
         print("\nCOEFFICIENTS")
         print("------------")
-        # make a dataframe to store the results
+        df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values, 'VIF': vifs})
 
-        df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values})
-        df_coefficients.style.format({'Coef': '{:.3f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
-        print(df_coefficients.to_string(index=False))
+        def fmt_float(x):
+            if x == "" or not pd.notna(x):
+                return ""
+            try:
+                ax = abs(float(x))
+            except (ValueError, TypeError):
+                return str(x)
+            if ax >= 100:
+                return f"{float(x):.0f}"
+            elif ax >= 10:
+                return f"{float(x):.2f}"
+            elif ax >= 1:
+                return f"{float(x):.3f}"
+            elif ax >= 0.01:
+                return f"{float(x):.4f}"
+            else:
+                return f"{float(x):.3e}"
 
-        # Print the R-squared and adjusted R-squared
+        def fmt_p(x):
+            if x == "" or not pd.notna(x):
+                return ""
+            else:
+                return f"{float(x):.3f}"
+
+        def fmt_vif(x):
+            if x == "" or not pd.notna(x):
+                return ""
+            return fmt_float(x)
+
+        print(df_coefficients.to_string(index=False, formatters={
+            'Coef': fmt_float,
+            'SE Coef': fmt_float,
+            'T-Value': fmt_float,
+            'P-Value': fmt_p,
+            'VIF': fmt_vif
+        }))
+
         print("\nMODEL SUMMARY")
         print("-------------")
-        # compute the standard deviation of the distance between the data values and the fitted values
         S = np.std(results.resid, ddof=len(terms))
-        # make a dataframe to store the results
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
         print(df_model_summary.to_string(index=False))
 
-        # Print the ANOVA table
         print("\nANALYSIS OF VARIANCE")
         print("---------------------")
-        # make a dataframe with the column names and no data
         df_anova = pd.DataFrame(columns=['Source', 'DF', 'Adj SS', 'Adj MS', 'F-Value', 'P-Value'])
-        # add the rows of data
         df_anova.loc[0] = ['Regression', results.df_model, results.mse_model * results.df_model, results.mse_model, results.fvalue, results.f_pvalue]
         jj = 1
         for term in terms:
             if term != 'Intercept':
-                # perform the f-test for the term
                 f_test = results.f_test(term + '= 0')
                 df_anova.loc[jj] = [term, f_test.df_num, f_test.fvalue * results.mse_resid * f_test.df_num, f_test.fvalue * results.mse_resid, f_test.fvalue, f_test.pvalue]
                 jj += 1
 
-        df_anova.loc[jj] = ['Error', results.df_resid, results.mse_resid * results.df_resid, results.mse_resid, np.nan, np.nan]
+        df_anova.loc[jj] = ['Error', results.df_resid, results.mse_resid * results.df_resid, results.mse_resid, "", ""]
+        df_anova.loc[jj + 1] = ['Total', results.df_model + results.df_resid, results.mse_total * (results.df_model + results.df_resid), "", "", ""]
 
-        '''
-        # Lack-of-fit
-        # compute the number of levels in the independent variables 
-        n_levels = results.df_resid
-        for term in terms:
-            if term != 'Intercept':
-                n_levels = np.minimum(n_levels, len(data[term].unique())
+        def fmt_int(x):
+            return f"{int(x)}" if pd.notna(x) and x != "" else x
 
-        if n_levels < results.df_resid:
-            dof_lof = n_levels - len(terms)
-            dof_pe = results.df_resid - n_levels
-            # compute the SSE for the pure error term
-            for 
-
-
-            df_anova.loc[jj + 1] = ['Lack-of-fit', n_levels - len(terms), np.nan, np.nan, np.nan, np.nan]
-        '''
-
-        df_anova.loc[jj + 1] = ['Total', results.df_model + results.df_resid, results.mse_total * (results.df_model + results.df_resid), np.nan, np.nan, np.nan]
-
-        print(df_anova.to_string(index=False))
+        print(df_anova.to_string(index=False, formatters={
+            'DF': fmt_int,
+            'Adj SS': fmt_float,
+            'Adj MS': fmt_float,
+            'F-Value': fmt_float,
+            'P-Value': fmt_p
+        }))
 
         return
 
@@ -690,23 +513,44 @@ class StepwiseRegression:
         terms = results.model.exog_names
         coefficients = results.params
         p_values = results.pvalues
-        #r_squared = results.rsquared
-        #adjusted_r_squared = results.rsquared_adj
 
-        # Print the information in a similar format to Minitab
         print("\nCOEFFICIENTS")
         print("------------")
-        # make a dataframe to store the results
-
         df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'P-Value': p_values})
-        print(df_coefficients.to_string(index=False))
+
+        def fmt_float(x):
+            if x == "" or not pd.notna(x):
+                return ""
+            try:
+                ax = abs(float(x))
+            except (ValueError, TypeError):
+                return str(x)
+            if ax >= 100:
+                return f"{float(x):.0f}"
+            elif ax >= 10:
+                return f"{float(x):.2f}"
+            elif ax >= 1:
+                return f"{float(x):.3f}"
+            elif ax >= 0.01:
+                return f"{float(x):.4f}"
+            else:
+                return f"{float(x):.3e}"
+
+        def fmt_p(x):
+            if x == "" or not pd.notna(x):
+                return ""
+            else:
+                return f"{float(x):.3f}"
+
+        print(df_coefficients.to_string(index=False, formatters={
+            'Coef': fmt_float,
+            'P-Value': fmt_p
+        }))
 
         # Print the R-squared and adjusted R-squared
         print("\nMODEL SUMMARY")
         print("-------------")
-        # compute the standard deviation of the distance between the data values and the fitted values
         S = np.std(results.resid, ddof=len(terms))
-        # make a dataframe to store the results
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
         print(df_model_summary.to_string(index=False))
 
