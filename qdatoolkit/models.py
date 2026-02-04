@@ -21,6 +21,49 @@ def ARIMAsummary(results):
 class Summary:
 
     @staticmethod
+    def fmt_float(x):
+        # Common float formatter used across Summary methods
+        if x == "" or not pd.notna(x):
+            return ""
+        try:
+            ax = abs(float(x))
+        except (ValueError, TypeError):
+            return str(x)
+        if ax >= 100:
+            return f"{float(x):.0f}"
+        elif ax >= 10:
+            return f"{float(x):.2f}"
+        elif ax >= 1:
+            return f"{float(x):.3f}"
+        elif ax >= 0.01:
+            return f"{float(x):.4f}"
+        else:
+            return f"{float(x):.3e}"
+
+    @staticmethod
+    def fmt_p(x):
+        if x == "" or not pd.notna(x):
+            return ""
+        else:
+            return f"{float(x):.3f}"
+
+    @staticmethod
+    def fmt_vif(x):
+        if x == "" or not pd.notna(x):
+            return ""
+        return Summary.fmt_float(x)
+
+    @staticmethod
+    def fmt_pct(x):
+        # Format proportion as percentage with 2 decimal places
+        if x == "" or not pd.notna(x):
+            return ""
+        try:
+            return f"{float(x) * 100:.2f}%"
+        except (ValueError, TypeError):
+            return str(x)
+
+    @staticmethod
     def auto(results):
         """Prints a summary of the model results.
 
@@ -84,48 +127,23 @@ class Summary:
         print("------------")
         df_coefficients = pd.DataFrame({'Term': terms, 'Coef': coefficients, 'SE Coef': std_errors, 'T-Value': t_values, 'P-Value': p_values, 'VIF': vifs})
 
-        def fmt_float(x):
-            if x == "" or not pd.notna(x):
-                return ""
-            try:
-                ax = abs(float(x))
-            except (ValueError, TypeError):
-                return str(x)
-            if ax >= 100:
-                return f"{float(x):.0f}"
-            elif ax >= 10:
-                return f"{float(x):.2f}"
-            elif ax >= 1:
-                return f"{float(x):.3f}"
-            elif ax >= 0.01:
-                return f"{float(x):.4f}"
-            else:
-                return f"{float(x):.3e}"
-
-        def fmt_p(x):
-            if x == "" or not pd.notna(x):
-                return ""
-            else:
-                return f"{float(x):.3f}"
-
-        def fmt_vif(x):
-            if x == "" or not pd.notna(x):
-                return ""
-            return fmt_float(x)
-
         print(df_coefficients.to_string(index=False, formatters={
-            'Coef': fmt_float,
-            'SE Coef': fmt_float,
-            'T-Value': fmt_float,
-            'P-Value': fmt_p,
-            'VIF': fmt_vif
+            'Coef': Summary.fmt_float,
+            'SE Coef': Summary.fmt_float,
+            'T-Value': Summary.fmt_float,
+            'P-Value': Summary.fmt_p,
+            'VIF': Summary.fmt_vif
         }))
 
         print("\nMODEL SUMMARY")
         print("-------------")
         S = np.std(results.resid, ddof=len(terms))
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
-        print(df_model_summary.to_string(index=False))
+        print(df_model_summary.to_string(index=False, formatters={
+            'S': Summary.fmt_float,
+            'R-sq': Summary.fmt_pct,
+            'R-sq(adj)': Summary.fmt_pct
+        }))
 
         print("\nANALYSIS OF VARIANCE")
         print("---------------------")
@@ -146,10 +164,10 @@ class Summary:
 
         print(df_anova.to_string(index=False, formatters={
             'DF': fmt_int,
-            'Adj SS': fmt_float,
-            'Adj MS': fmt_float,
-            'F-Value': fmt_float,
-            'P-Value': fmt_p
+            'Adj SS': Summary.fmt_float,
+            'Adj MS': Summary.fmt_float,
+            'F-Value': Summary.fmt_float,
+            'P-Value': Summary.fmt_p
         }))
 
         return
@@ -222,9 +240,13 @@ class Summary:
             coefficients[0] = adjusted_constant
 
         df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
-        df_coefficients.style.format({'Coef': '{:.6f}', 'SE Coef': '{:.3f}', 'T-Value': '{:.3f}', 'P-Value': '{:.3f}'})
-
-        print(df_coefficients.to_string(index=False))
+        # Apply same formatting style as regression
+        print(df_coefficients.to_string(index=False, formatters={
+            'Coef': Summary.fmt_float,
+            'SE Coef': Summary.fmt_float,
+            'T-Value': Summary.fmt_float,
+            'P-Value': Summary.fmt_p
+        }))
 
 
         # Print the ANOVA table
@@ -236,7 +258,11 @@ class Summary:
         SSE = np.sum(results.resid[max_order:]**2)
 
         df_rss.loc[0] = [df_model, SSE, SSE/df_model]
-        print(df_rss.to_string(index=False))
+        print(df_rss.to_string(index=False, formatters={
+            'DF': lambda x: f"{int(x)}" if pd.notna(x) and x != "" else x,
+            'SS': Summary.fmt_float,
+            'MS': Summary.fmt_float
+        }))
 
 
         # Print the information in a similar format to Minitab for LBQ test
@@ -255,8 +281,11 @@ class Summary:
         LBQ=acorr_ljungbox(results.resid[max_order:], lags=lagvalues, boxpierce=True)
 
         df_LBtest = pd.DataFrame({'Lag': lagvalues, 'Chi-Square': LBQ.lb_stat, 'P-Value': LBQ.lb_pvalue})
-        df_LBtest.style.format({'Lag': '{:.3f}', 'Chi-Square test': '{:.3f}', 'P-Value': '{:.3f}'})
-        print(df_LBtest.to_string(index=False))
+        print(df_LBtest.to_string(index=False, formatters={
+            'Lag': lambda x: f"{int(x)}" if pd.notna(x) and x != "" else x,
+            'Chi-Square': Summary.fmt_float,
+            'P-Value': Summary.fmt_p
+        }))
 
         return
 
