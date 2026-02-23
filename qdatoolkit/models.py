@@ -30,7 +30,7 @@ class Summary:
         except (ValueError, TypeError):
             return str(x)
         if ax >= 100:
-            return f"{float(x):.0f}"
+            return f"{float(x):.2f}"
         elif ax >= 10:
             return f"{float(x):.2f}"
         elif ax >= 1:
@@ -51,7 +51,20 @@ class Summary:
     def fmt_vif(x):
         if x == "" or not pd.notna(x):
             return ""
-        return Summary.fmt_float(x)
+        try:
+            ax = abs(float(x))
+        except (ValueError, TypeError):
+            return str(x)
+        if ax >= 100:
+            return f"{float(x):.2f}"
+        elif ax >= 10:
+            return f"{float(x):.2f}"
+        elif ax >= 1:
+            return f"{float(x):.2f}"
+        elif ax >= 0.01:
+            return f"{float(x):.3f}"
+        else:
+            return f"{float(x):.3e}"
 
     @staticmethod
     def fmt_pct(x):
@@ -59,9 +72,12 @@ class Summary:
         if x == "" or not pd.notna(x):
             return ""
         try:
-            return f"{float(x) * 100:.2f}%"
+            return f"{float(x) * 100:.3f}%"
         except (ValueError, TypeError):
             return str(x)
+
+    def fmt_int(x):
+        return f"{int(x)}" if pd.notna(x) and x != "" else x
 
     @staticmethod
     def auto(results):
@@ -105,9 +121,18 @@ class Summary:
         std_errors = results.bse
         t_values = results.tvalues
         p_values = results.pvalues
-        vifs = [variance_inflation_factor(results.model.exog, i) for i in range(len(terms))]
-        if terms[0]=='const':
-            vifs[0]=""
+        
+        if len(terms) > 1:
+            vifs = [variance_inflation_factor(results.model.exog, i) for i in range(len(terms))]
+
+            if terms[0]=='const':
+                vifs[0]=""
+
+        else:
+            if terms == 'const':
+                vifs = [""]
+            else:
+                vifs = [1]
 
         # Print the regression equation
         print("REGRESSION EQUATION")
@@ -158,17 +183,21 @@ class Summary:
 
         df_anova.loc[jj] = ['Error', results.df_resid, results.mse_resid * results.df_resid, results.mse_resid, "", ""]
         df_anova.loc[jj + 1] = ['Total', results.df_model + results.df_resid, results.mse_total * (results.df_model + results.df_resid), "", "", ""]
+        
+        # Ensure P-Value column is numeric, replacing empty strings with NaN
+        df_anova['P-Value'] = pd.to_numeric(df_anova['P-Value'], errors='coerce')
+        
+        # Replace NaN values with empty strings in the P-Value column
+        df_anova['P-Value'] = df_anova['P-Value'].fillna("")
 
-        def fmt_int(x):
-            return f"{int(x)}" if pd.notna(x) and x != "" else x
+        # Ensure all numeric columns are properly formatted
+        df_anova['DF'] = df_anova['DF'].apply(Summary.fmt_int)
+        df_anova['Adj SS'] = df_anova['Adj SS'].apply(Summary.fmt_float)
+        df_anova['Adj MS'] = df_anova['Adj MS'].apply(Summary.fmt_float)
+        df_anova['F-Value'] = df_anova['F-Value'].apply(Summary.fmt_float)
+        df_anova['P-Value'] = df_anova['P-Value'].apply(Summary.fmt_p)
 
-        print(df_anova.to_string(index=False, formatters={
-            'DF': fmt_int,
-            'Adj SS': Summary.fmt_float,
-            'Adj MS': Summary.fmt_float,
-            'F-Value': Summary.fmt_float,
-            'P-Value': Summary.fmt_p
-        }))
+        print(df_anova.to_string(index=False))
 
         return
 
@@ -727,3 +756,82 @@ class Assumptions:
             plt.show()
 
         return stat, p_value
+    
+    def all(self, norm_test='shapiro-wilk', ac_test='runs', lag=None, nlags=None, plotit=True):
+        
+        # get how many columns the data has
+        if isinstance(self.data, pd.DataFrame):
+            n_cols = self.data.shape[1]
+        else:
+            n_cols = 1 # if the data is a Series, it has only one column
+
+        if nlags is None:
+            nlags = min(len(self.data) // 3, 200)
+        else:
+            # check if the number of lags is less than the length of the data
+            if nlags > len(self.data):
+                raise ValueError("The number of lags must be less than the length of the data.")
+            
+        
+        
+        assumptions_results = pd.DataFrame(columns=self.data.columns, index=[norm_test+'test P-Value', ac_test+' test P-Value'])
+        fig, axes = plt.subplots(3, n_cols, figsize=(12, 5 * n_cols))
+        for i, col in enumerate(self.data.columns):
+            
+            if norm_test == 'shapiro-wilk':
+                _, p_value_norm = stats.shapiro(self.data[col])
+            elif norm_test == 'anderson-darling':
+                result = stats.anderson(self.data[col], dist='norm')
+                stat = result.statistic
+                if stat >= 0.6:
+                    p_value_norm = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
+                elif stat >= 0.34:
+                    p_value_norm = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
+                elif stat >= 0.2:
+                    p_value_norm = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
+                else:
+                    p_value_norm = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+            else:
+                raise ValueError("Invalid normality test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
+            
+            acf_values, stat_lbq, _ = acf(self.data[col], nlags = nlags, qstat=True, fft = False)
+
+            # check if the lag is specified for the Bartlett or LBQ test
+            if ac_test in ['bartlett', 'lbq'] and lag is None:
+                raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
+
+            if ac_test == 'runs':
+                stat, p_value_indep = runstest_1samp(self.data[col], correction=False)
+
+            elif ac_test == 'bartlett':
+                rk = acf_values[lag]
+                stat = rk
+                p_value_indep = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data[col]))))
+                
+            elif ac_test == 'lbq':
+                stat = stat_lbq[lag - 1]
+                p_value_indep = 1 - stats.chi2.cdf(stat, lag)
+
+            assumptions_results.loc[norm_test + ' test P-Value', col] = p_value_norm
+            assumptions_results.loc[ac_test + ' test P-Value', col] = p_value_indep
+
+            if plotit:
+                # Q-Q plot
+                stats.probplot(self.data[col], dist="norm", plot=axes[0, i])
+                axes[0, i].set_title(f'Q-Q Plot for {col}')
+
+                # ACF plot
+                sgt.plot_acf(self.data[col], lags=nlags, zero=False, ax=axes[1, i])
+                axes[1, i].set_title(f'ACF Plot for {col}')
+                axes[1, i].set_ylim(-1, 1)
+
+                # PACF plot
+                sgt.plot_pacf(self.data[col], lags=nlags, zero=False, ax=axes[2, i], method='ywm')
+                axes[2, i].set_title(f'PACF Plot for {col}')
+                axes[2, i].set_ylim(-1, 1)
+
+        print(assumptions_results)
+        plt.tight_layout()
+        plt.show()
+        
+        return assumptions_results
