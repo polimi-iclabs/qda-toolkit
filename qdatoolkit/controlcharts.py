@@ -7,31 +7,49 @@ import scipy.special as sps
 
 
 class ControlCharts:
+    """Statistical process control (SPC) charts for monitoring process stability.
+
+    Provides static methods for constructing common control charts:
+    Individual (I), Individual-Moving Range (IMR), Xbar-R, Xbar-S,
+    CUSUM, EWMA, Hotelling T-squared, and P charts. Each method computes
+    control limits, flags out-of-control points (TEST1), and optionally
+    plots the chart.
+
+    All chart methods follow a consistent pattern: they accept a
+    DataFrame, compute control limits from a calibration subset, append
+    the limits and alarm columns to a copy of the DataFrame, and return it.
+    """
+
     @staticmethod
     def I(original_df, col_name, K = 3, subset_size = None, plotit = True):
-        """Implements the Individual (I) chart.
+        """Construct an Individual (I) control chart for single observations.
+
+        Computes control limits using the average moving range (MR) with
+        the unbiasing constant d2 for n=2. Points outside UCL/LCL are
+        flagged in the ``I_TEST1`` column.
+
         Parameters
         ----------
-        original_df : pandas.DataFrame
-            A DataFrame containing the data to be plotted.
+        original_df : pd.DataFrame
+            DataFrame containing the process data.
         col_name : str
-            The name of the column to be used for the IMR control chart.
-        K : int, optional
-            The number of standard deviations. Default is 3.
+            Name of the column to chart.
+        K : int or float, optional
+            Number of standard deviations for the control limits.
+            Default is 3 (standard 3-sigma limits).
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate the center line and
+            control limits (Phase I calibration). If None, all rows are
+            used. A vertical dashed line is drawn at the boundary when
+            ``subset_size < len(original_df)``.
+        plotit : bool, optional
+            If True, display the I chart. Default is True.
 
         Returns
         -------
-        chart : matplotlib.axes._subplots.AxesSubplot
-            The IMR chart.
-
-        df_I : pandas.DataFrame with the following additional columns
-            - MR: The moving range
-            - I_UCL: The upper control limit for the individual
-            - I_CL: The center line for the individual
-            - I_LCL: The lower control limit for the individual
-            - I_TEST1: The points that violate the alarm rule for the individual
+        pd.DataFrame
+            A copy of ``original_df`` with added columns:
+            ``MR``, ``I_UCL``, ``I_CL``, ``I_LCL``, ``I_TEST1``.
         """
         # Check if df is a pandas DataFrame
         if not isinstance(original_df, pd.DataFrame):
@@ -91,33 +109,37 @@ class ControlCharts:
 
     @staticmethod
     def IMR(original_df, col_name, K = 3, subset_size = None, run_rules = False, plotit = True):
-        """Implements the Individual Moving Range (IMR) chart.
+        """Construct an Individual-Moving Range (I-MR) control chart.
+
+        Plots both an Individual chart (top) and a Moving Range chart
+        (bottom). Control limits are computed using the average MR with
+        unbiasing constants d2 and D4 for n=2.
+
         Parameters
         ----------
-        original_df : pandas.DataFrame
-            A DataFrame containing the data to be plotted.
+        original_df : pd.DataFrame
+            DataFrame containing the process data.
         col_name : str
-            The name of the column to be used for the IMR control chart.
-        K : int, optional
-            The number of standard deviations. Default is 3.
+            Name of the column to chart.
+        K : int or float, optional
+            Number of standard deviations for the control limits.
+            Default is 3.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate control limits
+            (Phase I calibration). If None, all rows are used.
+        run_rules : bool, optional
+            If True, apply Western Electric run rules (Tests 2-8) in
+            addition to the basic Test 1. Default is False.
+            **Note:** this feature is not yet fully implemented.
+        plotit : bool, optional
+            If True, display the I-MR chart. Default is True.
 
         Returns
         -------
-        chart : matplotlib.axes._subplots.AxesSubplot
-            The IMR chart.
-
-        df_IMR : pandas.DataFrame with the following additional columns
-            - MR: The moving range
-            - I_UCL: The upper control limit for the individual
-            - I_CL: The center line for the individual
-            - I_LCL: The lower control limit for the individual
-            - MR_UCL: The upper control limit for the moving range
-            - MR_CL: The center line for the moving range
-            - MR_LCL: The lower control limit for the moving range
-            - I_TEST1: The points that violate the alarm rule for the individual
-            - MR_TEST1: The points that violate the alarm rule for the moving range
+        pd.DataFrame
+            A copy of ``original_df`` with added columns:
+            ``MR``, ``I_UCL``, ``I_CL``, ``I_LCL``, ``I_TEST1``,
+            ``MR_UCL``, ``MR_CL``, ``MR_LCL``, ``MR_TEST1``.
         """
         # Check if df is a pandas DataFrame
         if not isinstance(original_df, pd.DataFrame):
@@ -334,26 +356,38 @@ class ControlCharts:
     
     @staticmethod
     def XbarR(original_df, K = 3, mean = None, subset_size = None, plotit = True):
-        '''
-        This function plots the Xbar-R charts of a DataFrame 
-        and returns the DataFrame with the control limits and alarm rules.
+        """Construct an Xbar-R (sample mean and range) control chart.
+
+        Each row of ``original_df`` represents one rational subgroup, with
+        columns being individual measurements within the subgroup. The
+        method computes sample means and ranges, then derives control
+        limits using the A2 and D3/D4 constants.
 
         Parameters
         ----------
-        original_df : DataFrame
-            The DataFrame that contains the data.
-        K : int, optional
-            The number of standard deviations. The default is 3.
+        original_df : pd.DataFrame
+            DataFrame where each row is a subgroup and each column is a
+            measurement within that subgroup. Must have at least 2 columns.
+        K : int or float, optional
+            Number of standard deviations for the control limits.
+            Default is 3.
         mean : float, optional
-            Input the mean of the population. Otherwise, the mean of the sample will be used.
+            Known process mean. If None, the grand mean of sample means
+            (from the calibration subset) is used.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate control limits
+            (Phase I calibration). If None, all rows are used.
+        plotit : bool, optional
+            If True, display the Xbar and R charts. Default is True.
 
         Returns
         -------
-        data_XR : DataFrame
-            The DataFrame with the control limits and alarm rules.
-        '''
+        pd.DataFrame
+            A copy of ``original_df`` with added columns:
+            ``sample_mean``, ``sample_range``,
+            ``Xbar_CL``, ``Xbar_UCL``, ``Xbar_LCL``, ``Xbar_TEST1``,
+            ``R_CL``, ``R_UCL``, ``R_LCL``, ``R_TEST1``.
+        """
         # get the shape of the DataFrame
         m, n = original_df.shape
 
@@ -441,28 +475,41 @@ class ControlCharts:
     
     @staticmethod
     def XbarS(original_df, K = 3, mean = None, sigma = None, subset_size = None, plotit = True):
-        '''
-        This function plots the Xbar-S charts of a DataFrame 
-        and returns the DataFrame with the control limits and alarm rules.
+        """Construct an Xbar-S (sample mean and standard deviation) control chart.
+
+        Each row of ``original_df`` represents one rational subgroup.
+        Control limits for the Xbar chart use the A3 constant, and limits
+        for the S chart use B3/B4 (estimated sigma) or B5/B6 (known sigma).
 
         Parameters
         ----------
-        original_df : DataFrame
-            The DataFrame that contains the data.
-        K : int, optional
-            The number of standard deviations. The default is 3.
+        original_df : pd.DataFrame
+            DataFrame where each row is a subgroup and each column is a
+            measurement within that subgroup. Must have at least 2 columns.
+        K : int or float, optional
+            Number of standard deviations for the control limits.
+            Default is 3.
         mean : float, optional
-            Input the mean of the population. Otherwise, the mean of the sample will be used.
+            Known process mean. If None, the grand mean of sample means
+            (from the calibration subset) is used.
         sigma : float, optional
-            Input the standard deviation of the population. Otherwise, the standard deviation of the sample will be used.
+            Known process standard deviation. If None, the average sample
+            standard deviation (Sbar) is used and limits are computed with
+            B3/B4 constants. If provided, limits use B5/B6 constants.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate control limits
+            (Phase I calibration). If None, all rows are used.
+        plotit : bool, optional
+            If True, display the Xbar and S charts. Default is True.
 
         Returns
         -------
-        data_XS : DataFrame
-            The DataFrame with the control limits and alarm rules.
-        '''
+        pd.DataFrame
+            A copy of ``original_df`` with added columns:
+            ``sample_mean``, ``sample_std``,
+            ``Xbar_CL``, ``Xbar_UCL``, ``Xbar_LCL``, ``Xbar_TEST1``,
+            ``S_CL``, ``S_UCL``, ``S_LCL``, ``S_TEST1``.
+        """
         # get the shape of the DataFrame
         m, n = original_df.shape
 
@@ -564,32 +611,40 @@ class ControlCharts:
 
     @staticmethod
     def CUSUM(data, col_name, params, mean = None, sigma_xbar = None, subset_size = None, plotit = True):
-        '''
-        This function plots the CUSUM chart of a DataFrame
-        and returns the DataFrame with the CUSUM values.
+        """Construct a tabular CUSUM (Cumulative Sum) control chart.
+
+        Tracks cumulative deviations from the target mean using upper
+        (Ci+) and lower (Ci-) one-sided statistics. Signals when either
+        statistic exceeds the decision interval H = h * sigma.
 
         Parameters
         ----------
-        data : DataFrame
-            The DataFrame that contains the data.
+        data : pd.DataFrame
+            DataFrame containing the process data.
         col_name : str
-            The name of the column in the DataFrame.
-        params : tuple
-            The values of the parameters h and k.
+            Name of the column to chart.
+        params : tuple of (float, float)
+            CUSUM design parameters ``(h, k)`` where *h* is the decision
+            interval (in sigma units) and *k* is the reference value /
+            allowance (in sigma units). Common choice: ``(5, 0.5)``.
         mean : float, optional
-            The mean of the population. The default is None.
+            Known target mean. If None, estimated from the calibration
+            subset.
         sigma_xbar : float, optional
-            The standard deviation of the population. The default is None.
+            Known process standard deviation. If None, estimated as the
+            sample standard deviation of the calibration subset.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate mean and sigma
+            (Phase I calibration). If None, all rows are used.
         plotit : bool, optional
-            If True, the function will plot the CUSUM chart. The default is True.
+            If True, display the CUSUM chart. Default is True.
 
         Returns
         -------
-        df_CUSUM : DataFrame
-            The DataFrame with the CUSUM values.
-        '''
+        pd.DataFrame
+            A copy of ``data`` with added columns:
+            ``Ci+``, ``Ci-``, ``Ci+_TEST1``, ``Ci-_TEST1``.
+        """
         # Check if the col_name exists in the DataFrame
         if col_name not in data.columns:
             raise ValueError('The column name does not exist in the DataFrame.')
@@ -660,32 +715,41 @@ class ControlCharts:
 
     @staticmethod
     def EWMA(data, col_name, params, mean = None, sigma_xbar = None, subset_size = None, plotit = True):
-        '''
-        This function plots the EWMA chart of a DataFrame
-        and returns the DataFrame with the EWMA values.
+        """Construct an EWMA (Exponentially Weighted Moving Average) control chart.
+
+        Computes the EWMA statistic z_t = lambda * x_t + (1 - lambda) * z_{t-1}
+        with time-varying 3-sigma control limits that widen from the
+        center line and converge to their steady-state values.
 
         Parameters
         ----------
-        data : DataFrame
-            The DataFrame that contains the data.
+        data : pd.DataFrame
+            DataFrame containing the process data.
         col_name : str
-            The name of the column in the DataFrame.
+            Name of the column to chart.
         params : float
-            The value of the parameter lambda.
+            The smoothing parameter lambda (between 0 and 1). Smaller
+            values give more weight to historical data. Common choice:
+            0.05-0.25.
         mean : float, optional
-            The mean of the population. The default is None.
+            Known target mean. If None, estimated from the calibration
+            subset.
         sigma_xbar : float, optional
-            The standard deviation of the population. The default is None.
+            Known process standard deviation. If None, estimated as the
+            sample standard deviation of the calibration subset.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            Number of initial rows used to estimate mean and sigma
+            (Phase I calibration). If None, all rows are used.
         plotit : bool, optional
-            If True, the function will plot the EWMA chart. The default is True.
+            If True, display the EWMA chart. Default is True.
 
         Returns
         -------
-        df_EWMA : DataFrame
-            The DataFrame with the EWMA values.
-        '''
+        pd.DataFrame
+            A copy of ``data`` with added columns:
+            ``a_t`` (variance weight), ``z`` (EWMA statistic),
+            ``UCL``, ``CL``, ``LCL``, ``z_TEST1``.
+        """
         # Check if the col_name exists in the DataFrame
         if col_name not in data.columns:
             raise ValueError('The column name does not exist in the DataFrame.')
@@ -749,35 +813,46 @@ class ControlCharts:
     
     @staticmethod
     def T2hotelling(original_df, col_names, sample_size, alpha, mean = None, varcov = None, plotit = True):
-        
-        '''
-        This function plots the Hotelling T2 chart of a DataFrame
-        and returns the DataFrame with the Hotelling T2 values.
+        """Construct a Hotelling T-squared multivariate control chart.
+
+        Monitors multiple correlated quality characteristics simultaneously.
+        The UCL distribution depends on the available information:
+
+        - **Known mean and covariance** (both provided): chi-squared distribution.
+        - **Estimated from subgroups with n > 1**: F distribution.
+        - **Estimated from individual observations (n = 1)**: Beta distribution
+          (Phase I) and F distribution (Phase II), using a short-range
+          covariance estimator based on successive differences.
 
         Parameters
         ----------
-        original_df : DataFrame
-            The DataFrame that contains the data.
-        col_names : list
-            The names of the columns in the DataFrame.
-        sample_size : tuple
-            The values of m (number of samples) and n (number of observations in each sample). 
-            In case the grand mean and varcov matrix are not provided, m is also the number of samples used to calculate the grand mean and varcov.
+        original_df : pd.DataFrame
+            DataFrame containing the raw observations. The total number
+            of rows must be divisible by ``n`` (subgroup size).
+        col_names : list of str
+            Names of the columns (quality characteristics) to monitor.
+        sample_size : tuple of (int, int)
+            ``(m, n)`` where *m* is the number of subgroups used for
+            Phase I calibration and *n* is the number of observations
+            per subgroup. Rows are split into subgroups of size *n*.
         alpha : float
-            The significance level.
-        mean : Series, optional
-            The mean of the population. The default is None.
-        varcov : DataFrame, optional
-            The variance-covariance matrix of the population. The default is None.
+            Significance level for the control limit (e.g. 0.05).
+        mean : pd.Series, optional
+            Known process mean vector (indexed by ``col_names``). If None,
+            estimated as the grand mean of the first *m* subgroup means.
+        varcov : pd.DataFrame, optional
+            Known variance-covariance matrix. If None, estimated from the
+            first *m* subgroups (pooled within-subgroup covariance for
+            n > 1, or short-range successive-difference estimator for n = 1).
         plotit : bool, optional
-            If True, the function will plot the Hotelling T2 chart. The default is True.
+            If True, display the T-squared chart. Default is True.
 
         Returns
         -------
-        sample_mean : DataFrame
-            The DataFrame with the Hotelling T2 values, control limits and alarm rules.
-            
-        '''
+        pd.DataFrame
+            A DataFrame of subgroup means with added columns:
+            ``T2``, ``UCL``, ``T2_TEST``.
+        """
 
         m, n = sample_size
 
@@ -879,30 +954,39 @@ class ControlCharts:
         return sample_mean
 
     def P(original_df, defects_col, subgroup_size, subset_size=None, known_params=None, plotit=True):
+        """Construct a P (proportion defective) control chart.
 
-        '''
-        This function plots the P chart of a DataFrame
-        and returns the DataFrame with the control limits and alarm rules.
+        Monitors the fraction of nonconforming items per subgroup. Control
+        limits are computed as pbar +/- 3*sqrt(pbar*(1-pbar)/n), so they
+        may vary across samples when subgroup sizes differ.
 
         Parameters
         ----------
-        original_df : DataFrame
-            The DataFrame that contains the data.
+        original_df : pd.DataFrame
+            DataFrame containing the process data.
         defects_col : str
-            The name of the column in the DataFrame that contains the number of defects.
-            In case you only have the proportion of defects, set the subgroup_size to 1.
-        subgroup_size : str or int, optional
-            The name of the column in the DataFrame that contains the subgroup size 
-            OR an int equal to the size of the subgroup. 
-            If subgroup_size is 1, the function will assume that the defects_col contains the proportion of defects.
-        sample_size : int
-            The number of rows to be used for the P chart. Default is None and all rows are used.
+            Name of the column containing the number of defective items
+            per subgroup. If ``subgroup_size=1``, this column should
+            contain proportions (values between 0 and 1) instead.
+        subgroup_size : int or str
+            Either a fixed integer subgroup size, or the name of a column
+            in ``original_df`` containing per-row subgroup sizes. Set to
+            1 when ``defects_col`` already contains proportions.
+        subset_size : int, optional
+            Number of initial rows used to estimate the mean proportion
+            (Phase I calibration). If None, all rows are used.
         known_params : float, optional
-            The value of the mean proportion. The default is None.
-            If None, the function will calculate the mean proportion from the data.
+            Known process proportion (pbar). If None, estimated from the
+            calibration subset.
         plotit : bool, optional
-            If True, the function will plot the P chart. The default is True.
-        '''
+            If True, display the P chart. Default is True.
+
+        Returns
+        -------
+        pd.DataFrame
+            The input DataFrame with added columns:
+            ``p``, ``std_dev``, ``P_CL``, ``P_UCL``, ``P_LCL``, ``P_TEST1``.
+        """
         if subgroup_size is None:
             raise ValueError('The subgroup size column must be provided.')
         
@@ -969,8 +1053,33 @@ class ControlCharts:
     
 
 class constants:
+    """Unbiasing and scaling constants for control chart calculations.
+
+    Computes the standard SPC constants (d2, d3, c4, A2, D3, D4) via
+    numerical integration of the studentized range distribution and
+    gamma function identities. All methods are static and accept the
+    rational subgroup size ``n`` as input.
+    """
+
     @staticmethod
     def getd2(n=None):
+        """Compute the d2 constant (mean of the relative range).
+
+        d2 is defined as E[W] where W follows the studentized range
+        distribution with parameters ``n`` and infinite degrees of freedom.
+        Used to convert the average range to an estimate of sigma:
+        sigma_hat = Rbar / d2.
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+
+        Returns
+        -------
+        float
+            The d2 constant for the given subgroup size.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size ({})".format(n))
         def f(x):
@@ -982,6 +1091,22 @@ class constants:
 
     @staticmethod
     def getd3(n=None):
+        """Compute the d3 constant (standard deviation of the relative range).
+
+        d3 = sqrt(E[W^2] - d2^2), where W follows the studentized range
+        distribution. Used to compute D3 and D4 constants for range chart
+        control limits.
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+
+        Returns
+        -------
+        float
+            The d3 constant for the given subgroup size.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size")
         def f(x):
@@ -996,6 +1121,22 @@ class constants:
 
     @staticmethod
     def getc4(n=None):
+        """Compute the c4 unbiasing constant for sample standard deviation.
+
+        c4 = sqrt(2/(n-1)) * Gamma(n/2) / Gamma((n-1)/2). Used to convert
+        the average sample standard deviation to an unbiased estimate of
+        sigma: sigma_hat = Sbar / c4.
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+
+        Returns
+        -------
+        float
+            The c4 constant for the given subgroup size.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size")
         c4 = np.sqrt(2 / (n-1)) * (sps.gamma(n/2) / sps.gamma((n-1)/2))
@@ -1003,6 +1144,23 @@ class constants:
 
     @staticmethod
     def getA2(n=None, K = 3):
+        """Compute the A2 constant for Xbar-R chart control limits.
+
+        A2 = K / (d2 * sqrt(n)). The Xbar control limits are:
+        UCL/LCL = Xbar_bar +/- A2 * Rbar.
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+        K : int or float, optional
+            Number of sigma for the control limits. Default is 3.
+
+        Returns
+        -------
+        float
+            The A2 constant for the given subgroup size and K.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size")
         A2 = K / (constants.getd2(n) * np.sqrt(n))
@@ -1010,6 +1168,24 @@ class constants:
 
     @staticmethod
     def getD3(n=None, K = 3):
+        """Compute the D3 constant for the lower control limit of the R chart.
+
+        D3 = max(0, 1 - K * d3 / d2). The R chart LCL = D3 * Rbar.
+        For small subgroup sizes, D3 is clamped to 0 (LCL cannot be
+        negative).
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+        K : int or float, optional
+            Number of sigma for the control limits. Default is 3.
+
+        Returns
+        -------
+        float
+            The D3 constant for the given subgroup size and K.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size")
         D3 = np.maximum(0, 1 - K * constants.getd3(n) / constants.getd2(n))
@@ -1017,6 +1193,22 @@ class constants:
 
     @staticmethod
     def getD4(n=None, K = 3):
+        """Compute the D4 constant for the upper control limit of the R chart.
+
+        D4 = 1 + K * d3 / d2. The R chart UCL = D4 * Rbar.
+
+        Parameters
+        ----------
+        n : int
+            Subgroup size (must be an integer >= 2).
+        K : int or float, optional
+            Number of sigma for the control limits. Default is 3.
+
+        Returns
+        -------
+        float
+            The D4 constant for the given subgroup size and K.
+        """
         if n is None or n < 2 or abs(n - round(n)) != 0:
             raise ValueError("Invalid sample size")
         D4 = 1 + K * constants.getd3(n) / constants.getd2(n)

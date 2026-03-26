@@ -6,6 +6,10 @@
 
 This repository contains `qda-toolkit`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
+## Latest changes
+- lorem ipsum
+- dolor sit amet
+
 ## Features
 
 The QDA module contains several classes, each with its own functionality:
