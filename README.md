@@ -7,8 +7,14 @@
 This repository contains `qda-toolkit`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
 ## Latest changes
-- lorem ipsum
-- dolor sit amet
+- Fixed KeyError when running ARIMA summary on latest versions due to deprecated behavior
+- Removed dependency version pinnings
+- Deleted repeating behaviors (e.g. ARIMAsummary function and Summary.ARIMA, which is essentially the same thing)
+
+## Coming soon
+- More statistical models
+- Error fixes in hypotesis test
+- More features in hypotesis test
 
 ## Features
 
