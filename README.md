@@ -50,17 +50,18 @@ qda.Summary.regression(regression_model_object)
 ```
 
 ## Latest changes
-- Fixed KeyError when running ARIMA summary on latest versions due to deprecated pandas behavior
+- Fixed KeyError when running ARIMA and stepwise linear regressions on latest versions due to deprecated pandas behavior
 - Removed dependency version pinnings, to make the package compatible with modern Python
 - Deleted repeating behaviors (e.g. ARIMAsummary function and Summary.ARIMA, which is essentially the same thing)
 - Code cleaning
 - Increased documentation readability
 - Fixed Copy-on-Write pandas error for operations involving T^2 control chart
+- Fixed NaN median due to a wrong for loop
+- File type handling in assumptions tests
 
 ## Upcoming features and fixes
-- Missing median value when displaying the T^2 control chart
-- More statistical models (Control charts, regression analysis, etc.)
-- Error fixes in hypotesis test
+- More statistical models
+- More control charts
 - More features in hypotesis test
 
 

@@ -808,10 +808,14 @@ class Assumptions:
                 UserWarning
             )
             data = pd.Series(data)
+
+        if isinstance(data, pd.DataFrame):
+            if data.shape[1] == 1:
+                data = data.squeeze()
+
         self.data = data.dropna()
 
     def normality(self, qqplot=True, test='shapiro-wilk'):
-        # TODO: modify handling for DataFrames and not df['colname']
         # TODO: add feature chi squared test
 
         """Test whether the data follow a normal distribution.
@@ -839,6 +843,10 @@ class Assumptions:
             The p-value of the test. Small values (e.g. < 0.05) indicate
             the data are unlikely to be normally distributed.
         """
+
+        if isinstance(self.data, pd.DataFrame):
+            if self.data.shape[1] > 1:
+                raise TypeError("Data not supported, please specify the column name or use Assumptions(data).all() instead")
 
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
@@ -902,6 +910,10 @@ class Assumptions:
             The p-value. Small values (e.g. < 0.05) suggest the data
             exhibit significant autocorrelation.
         """
+
+        if isinstance(self.data, pd.DataFrame):
+            if self.data.shape[1] > 1:
+                    raise TypeError("Data not supported, please specify the column name or use Assumptions(data).all() instead")
 
         stat, p_value = None, None
 
@@ -980,79 +992,83 @@ class Assumptions:
             two rows: one for the normality test p-value and one for the
             independence test p-value.
         """
-        # get how many columns the data has
-        if isinstance(self.data, pd.DataFrame):
-            n_cols = self.data.shape[1]
-        else:
-            n_cols = 1 # if the data is a Series, it has only one column
 
-        if nlags is None:
-            nlags = min(len(self.data) // 3, 200)
+        if not isinstance(self.data, pd.DataFrame):
+            raise TypeError("Data not supported, please enter a pd.DataFrame with n > 1 columns")
+        
         else:
-            # check if the number of lags is less than the length of the data
-            if nlags > len(self.data):
-                raise ValueError("The number of lags must be less than the length of the data.")
-            
-        
-        
-        assumptions_results = pd.DataFrame(columns=self.data.columns, index=[norm_test+'test P-Value', ac_test+' test P-Value'])
-        fig, axes = plt.subplots(3, n_cols, figsize=(12, 5 * n_cols))
-        for i, col in enumerate(self.data.columns):
-            
-            if norm_test == 'shapiro-wilk':
-                _, p_value_norm = stats.shapiro(self.data[col])
-            elif norm_test == 'anderson-darling':
-                result = stats.anderson(self.data[col], dist='norm')
-                stat = result.statistic
-                if stat >= 0.6:
-                    p_value_norm = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
-                elif stat >= 0.34:
-                    p_value_norm = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
-                elif stat >= 0.2:
-                    p_value_norm = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
-                else:
-                    p_value_norm = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+
+            # get how many columns the data has
+            if isinstance(self.data, pd.DataFrame):
+                n_cols = self.data.shape[1]
             else:
-                raise ValueError("Invalid normality test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
-            
-            acf_values, stat_lbq, _ = acf(self.data[col], nlags = nlags, qstat=True, fft = False)
+                n_cols = 1 # if the data is a Series, it has only one column
 
-            # check if the lag is specified for the Bartlett or LBQ test
-            if ac_test in ['bartlett', 'lbq'] and lag is None:
-                raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
-
-            if ac_test == 'runs':
-                stat, p_value_indep = runstest_1samp(self.data[col], correction=False)
-
-            elif ac_test == 'bartlett':
-                rk = acf_values[lag]
-                stat = rk
-                p_value_indep = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data[col]))))
+            if nlags is None:
+                nlags = min(len(self.data) // 3, 200)
+            else:
+                # check if the number of lags is less than the length of the data
+                if nlags > len(self.data):
+                    raise ValueError("The number of lags must be less than the length of the data.")
                 
-            elif ac_test == 'lbq':
-                stat = stat_lbq[lag - 1]
-                p_value_indep = 1 - stats.chi2.cdf(stat, lag)
+            assumptions_results = pd.DataFrame(columns=self.data.columns, index=[norm_test+'test P-Value', ac_test+' test P-Value'])
+            fig, axes = plt.subplots(3, n_cols, figsize=(12, 5 * n_cols))
+            for i, col in enumerate(self.data.columns):
+                
+                if norm_test == 'shapiro-wilk':
+                    _, p_value_norm = stats.shapiro(self.data[col])
+                elif norm_test == 'anderson-darling':
+                    result = stats.anderson(self.data[col], dist='norm')
+                    stat = result.statistic
+                    if stat >= 0.6:
+                        p_value_norm = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
+                    elif stat >= 0.34:
+                        p_value_norm = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
+                    elif stat >= 0.2:
+                        p_value_norm = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
+                    else:
+                        p_value_norm = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+                else:
+                    raise ValueError("Invalid normality test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
+                
+                acf_values, stat_lbq, _ = acf(self.data[col], nlags = nlags, qstat=True, fft = False)
 
-            assumptions_results.loc[norm_test + ' test P-Value', col] = p_value_norm
-            assumptions_results.loc[ac_test + ' test P-Value', col] = p_value_indep
+                # check if the lag is specified for the Bartlett or LBQ test
+                if ac_test in ['bartlett', 'lbq'] and lag is None:
+                    raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
 
-            if plotit:
-                # Q-Q plot
-                stats.probplot(self.data[col], dist="norm", plot=axes[0, i])
-                axes[0, i].set_title(f'Q-Q Plot for {col}')
+                if ac_test == 'runs':
+                    stat, p_value_indep = runstest_1samp(self.data[col], correction=False)
 
-                # ACF plot
-                sgt.plot_acf(self.data[col], lags=nlags, zero=False, ax=axes[1, i])
-                axes[1, i].set_title(f'ACF Plot for {col}')
-                axes[1, i].set_ylim(-1, 1)
+                elif ac_test == 'bartlett':
+                    rk = acf_values[lag]
+                    stat = rk
+                    p_value_indep = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data[col]))))
+                    
+                elif ac_test == 'lbq':
+                    stat = stat_lbq[lag - 1]
+                    p_value_indep = 1 - stats.chi2.cdf(stat, lag)
 
-                # PACF plot
-                sgt.plot_pacf(self.data[col], lags=nlags, zero=False, ax=axes[2, i], method='ywm')
-                axes[2, i].set_title(f'PACF Plot for {col}')
-                axes[2, i].set_ylim(-1, 1)
+                assumptions_results.loc[norm_test + ' test P-Value', col] = p_value_norm
+                assumptions_results.loc[ac_test + ' test P-Value', col] = p_value_indep
 
-        print(assumptions_results)
-        plt.tight_layout()
-        plt.show()
-        
-        return assumptions_results
+                if plotit:
+                    # Q-Q plot
+                    stats.probplot(self.data[col], dist="norm", plot=axes[0, i])
+                    axes[0, i].set_title(f'Q-Q Plot for {col}')
+
+                    # ACF plot
+                    sgt.plot_acf(self.data[col], lags=nlags, zero=False, ax=axes[1, i])
+                    axes[1, i].set_title(f'ACF Plot for {col}')
+                    axes[1, i].set_ylim(-1, 1)
+
+                    # PACF plot
+                    sgt.plot_pacf(self.data[col], lags=nlags, zero=False, ax=axes[2, i], method='ywm')
+                    axes[2, i].set_title(f'PACF Plot for {col}')
+                    axes[2, i].set_ylim(-1, 1)
+
+            print(assumptions_results)
+            plt.tight_layout()
+            plt.show()
+            
+            return assumptions_results

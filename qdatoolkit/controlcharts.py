@@ -863,14 +863,12 @@ class ControlCharts:
         # number of variables
         p = len(col_names)
 
+        # create the column sample_id
         original_df['sample_id'] = np.repeat(np.arange(1, len(original_df)/n+1), n)
-        print("Printing original df \n")
-        print(original_df)
 
         # group by sample_id to calculate the mean within each sample
         sample_mean = original_df.groupby('sample_id').mean()
-        print("Printing sample mean \n")
-        print(sample_mean)
+        
 
         if mean is None:
             # compute the grand mean from samples up to m
@@ -878,12 +876,6 @@ class ControlCharts:
 
             # reorder the columns to match the order of the columns in the DataFrame
             Xbarbar = Xbarbar.reindex(index=col_names)
-
-            # for printing test
-            print("Printing xbarbar \n")
-            print(Xbarbar)
-        else:
-            Xbarbar = mean
 
         if varcov is None:
             if n > 1:
@@ -929,14 +921,20 @@ class ControlCharts:
         # calculate the inverse of the covariance matrix
         S_inv = np.linalg.inv(S)
 
+        # sample mean starts at 1 as index because of sample id
+        # thus we need to reset index
+        sample_mean.reset_index(inplace=True)
+
         # iterate through the length of sample_mean dataframe
-        for i in range(len(sample_mean)):
+        for i in range(len(sample_mean)): 
+            # len is zero based indexing
             sample_mean.loc[i, "T2"] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
 
         # add the UCL to the DataFrame up to m
         sample_mean['UCL'] = UCL1
         if len(sample_mean) > m:
             sample_mean.loc[m:, 'UCL'] = UCL2
+
 
         # Add a column with the test
         sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > sample_mean['UCL'], sample_mean['T2'], np.nan)
@@ -946,9 +944,6 @@ class ControlCharts:
         WARNING: DATA HAS NANS, ROOT CAUSED TO BE CHECKED NOW
         TODO: check operations involving sample_mean and find the NaN root cause
         """
-        sample_mean = sample_mean.sort_index()
-        print("Printing sample mean \n")
-        print(sample_mean)
 
         # Plot the Hotelling T2 statistic
         if plotit == True:
@@ -962,7 +957,7 @@ class ControlCharts:
                 plt.text(len(sample_mean)+1.2, UCL2, 'UCL_p2 = {:.3f}'.format(UCL2), verticalalignment='center')
             else:
                 plt.text(len(sample_mean)+1.2, UCL1, 'UCL = {:.3f}'.format(UCL1), verticalalignment='center')
-            plt.text(len(sample_mean)+1.2, np.median(sample_mean['T2']), f'Median = {np.median(sample_mean['T2'])}', verticalalignment='center')
+            plt.text(len(sample_mean)+1.2, np.median(sample_mean['T2']), 'Median = {:.3f}'.format(np.median(sample_mean['T2']), verticalalignment='center'))
             plt.xlim(0, len(sample_mean)+1)
             plt.xlabel('Sample')
             plt.ylabel('T$^2$')
@@ -1231,51 +1226,3 @@ class constants:
             raise ValueError("Invalid sample size")
         D4 = 1 + K * constants.getd3(n) / constants.getd2(n)
         return D4
-    
-def test_CC_XbarR():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(20, 5))
-    data = pd.DataFrame(data, columns=['A', 'B', 'C', 'D', 'E'])
-    cc = ControlCharts.XbarR(data)
-
-def test_CC_XbarS():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(20, 5))
-    data = pd.DataFrame(data, columns=['A', 'B', 'C', 'D', 'E'])
-    cc = ControlCharts.XbarS(data)
-
-def test_CC_IMR():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(20, 1))
-    data = pd.DataFrame(data, columns=['A'])
-    cc = ControlCharts.IMR(data, 'A')
-
-def test_CC_CUSUM():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(20, 1))
-    data = pd.DataFrame(data, columns=['A'])
-    cc = ControlCharts.CUSUM(data, 'A', (10, 0.5))
-
-def test_CC_EWMA():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(20, 1))
-    data = pd.DataFrame(data, columns=['A'])
-    cc = ControlCharts.EWMA(data, 'A', (0.2))
-
-def test_CC_T2hotelling():
-    np.random.seed(0)
-    data = np.random.normal(loc=10, scale=2, size=(30, 2))
-    data = pd.DataFrame(data, columns=['A', 'B'])
-    cc = ControlCharts.T2hotelling(data, ['A', 'B'], (10,3), 0.0027)
-
-# changes: added main() function so that the example can run perfectly run if __name__ == '__main__'. instead of running it down one by one
-def main():
-    test_CC_XbarR()
-    test_CC_XbarS()
-    test_CC_IMR()
-    test_CC_CUSUM()
-    test_CC_EWMA()
-    test_CC_T2hotelling()
-
-if __name__ == '__main__':
-    main()
