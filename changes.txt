@@ -1,4 +1,0 @@
-1. Removed the pin on dependencies versions to make it compatible with newest Python
-2. Fixed some deprecated syntaxes
-3. Deleted functions that otherwise behave similarly to class methods
-4. Updated docstrings to make it cleaner and more readable

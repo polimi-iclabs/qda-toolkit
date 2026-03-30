@@ -11,7 +11,6 @@ import statsmodels.graphics.tsaplots as sgt
 import matplotlib.pyplot as plt
 from scipy import stats
 import warnings
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 
 class Summary:
@@ -170,7 +169,6 @@ class Summary:
             Summary.ARIMA(results)
         else:
             print("The type of the results object is not supported.")
-        return
 
     @staticmethod
     def regression(results):
@@ -234,10 +232,10 @@ class Summary:
             if results.model.exog_names[i] == 'Intercept':
                 equation += "%.3f" % coefficients[i]
             else:
-                if coefficients[i] > 0:
-                    equation += " + %.3f %s" % (coefficients[i], terms[i])
+                if coefficients.iloc[i] > 0:
+                    equation += " + %.3f %s" % (coefficients.iloc[i], terms[i])
                 else:
-                    equation += " %.3f %s" % (coefficients[i], terms[i])
+                    equation += " %.3f %s" % (coefficients.iloc[i], terms[i])
         print(equation)
 
         print("\nCOEFFICIENTS")
@@ -290,8 +288,6 @@ class Summary:
         df_anova['P-Value'] = df_anova['P-Value'].apply(Summary.fmt_p)
 
         print(df_anova.to_string(index=False))
-
-        return
 
     @staticmethod
     def ARIMA(results):
@@ -427,8 +423,6 @@ class Summary:
             'Chi-Square': Summary.fmt_float,
             'P-Value': Summary.fmt_p
         }))
-
-        return
 
 
 class Models:
@@ -650,10 +644,13 @@ class StepwiseRegression:
 
                 model_fit = sm.OLS(self.y, X_test).fit()
 
+                # get the p value from the fitted regression
+                pval = model_fit.pvalues.iloc[-1]
+
                 # if the p-value of the new variable is less than the alpha_to_enter level, 
                 # add the variable to the list of variables to include
-                if model_fit.pvalues[-1] < self.alpha_to_enter and model_fit.pvalues[-1] < selected_pvalue:
-                    selected_pvalue = model_fit.pvalues[-1]
+                if pval < self.alpha_to_enter and pval < selected_pvalue:
+                    selected_pvalue = pval
                     self.variables_to_include = testing_variables
                     self.model_fit = model_fit
 
@@ -694,7 +691,7 @@ class StepwiseRegression:
         testing_variables = original_variables.copy()
 
         for i in range(len(sorted_pvalues)):
-            if sorted_pvalues[i] > self.alpha_to_remove:
+            if sorted_pvalues.iloc[i] > self.alpha_to_remove:
                 variable_to_remove = sorted_pvalues.index[i]
                 testing_variables.remove(self.X.columns.get_loc(variable_to_remove))
             else:
@@ -773,9 +770,6 @@ class StepwiseRegression:
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
         print(df_model_summary.to_string(index=False))
 
-        return
-
-
 class Assumptions:
     """Statistical assumption checker for normality and independence.
 
@@ -818,7 +812,7 @@ class Assumptions:
 
     def normality(self, qqplot=True, test='shapiro-wilk'):
         # TODO: modify handling for DataFrames and not df['colname']
-
+        # TODO: add feature chi squared test
 
         """Test whether the data follow a normal distribution.
 
@@ -883,6 +877,7 @@ class Assumptions:
         ----------
         plotit : bool, optional
             If True, display ACF and PACF plots. Default is True.
+
         ac_test : {'runs', 'bartlett', 'lbq'}, optional
             Which independence test to perform. Default is ``'runs'``.
 

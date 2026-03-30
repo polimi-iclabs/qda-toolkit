@@ -1,8 +1,7 @@
 """
 The purpose of this file is to check the control chart modules. All worked, but it needs renewing especially in pandas
-TODO: Review constants class in controlcharts
+TODO: T^2 chart
 """
-
 import numpy as np
 import pandas as pd
 import qdatoolkit as qda

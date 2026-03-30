@@ -13,7 +13,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     license='CC BY-NC-SA 4.0',
-    url='https://github.com/polimi-iclabs/qda',
+    url='https://github.com/polimi-iclabs/qda-toolkit',
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -21,11 +21,11 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        'Jinja2==3.1.2',
-        'matplotlib==3.5.2',
-        'numpy==1.21.5',
-        'pandas==1.3.5',
-        'scipy==1.7.3',
-        'statsmodels==0.13.5',
+        'Jinja2>=3.1.2',
+        'matplotlib>=3.5.2',
+        'numpy>=1.21.5',
+        'pandas>=1.3.5',
+        'scipy>=1.7.3',
+        'statsmodels>=0.13.5',
     ],
 )
