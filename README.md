@@ -7,7 +7,6 @@
 This repository contains `qda-toolkit`, a Python package that provides functions for creating control charts and statistical models. The output is designed to be user-friendly and similar to the one provided by other popular commercial software for statistical process control and quality data modeling.
 
 ## Features
-
 The QDA module contains several classes, each with its own functionality:
 
 1. **ControlCharts**: This class provides several methods for creating control charts (Shewhart, small shifts and multivariate CC):
@@ -49,6 +48,22 @@ qda.ControlCharts.IMR(dataframe, column_name)
 # summary of a linear regression model
 qda.Summary.regression(regression_model_object)
 ```
-## License
 
+## Latest changes
+- Fixed KeyError when running ARIMA and stepwise linear regressions on latest versions due to deprecated pandas behavior
+- Removed dependency version pinnings, to make the package compatible with modern Python
+- Deleted repeating behaviors (e.g. ARIMAsummary function and Summary.ARIMA, which is essentially the same thing)
+- Code cleaning
+- Increased documentation readability
+- Fixed Copy-on-Write pandas error for operations involving T^2 control chart
+- Fixed NaN median due to a wrong for loop
+- File type handling in assumptions tests
+
+## Upcoming features and fixes
+- More statistical models
+- More control charts
+- More features in hypotesis test
+
+
+## License
 This project is licensed under the CC BY-NC-SA 4.0 license. See the LICENSE.md file for details.

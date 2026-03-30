@@ -12,17 +12,33 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import warnings
 
-def summary(results):
-    return Summary.auto(results)
-
-def ARIMAsummary(results):
-    return Summary.auto(results)
 
 class Summary:
+    """Formatted summary printer for statsmodels regression and ARIMA results.
+
+    Produces Minitab-style console output including coefficient tables,
+    model fit statistics, ANOVA tables, and diagnostic tests. All methods
+    are static; the class is used purely as a namespace.
+    """
 
     @staticmethod
     def fmt_float(x):
-        # Common float formatter used across Summary methods
+        """Format a numeric value with precision based on its magnitude.
+
+        Chooses the number of decimal places dynamically so that small
+        values retain meaningful digits while large values stay compact.
+
+        Parameters
+        ----------
+        x : float, str, or NaN
+            The value to format. Empty strings and NaN are returned as "".  
+
+        Returns
+        -------
+        str
+            Formatted string: 2 dp for |x| >= 10, 3 dp for |x| >= 1,
+            4 dp for |x| >= 0.01, and scientific notation otherwise.
+        """
         if x == "" or not pd.notna(x):
             return ""
         try:
@@ -42,6 +58,18 @@ class Summary:
 
     @staticmethod
     def fmt_p(x):
+        """Format a p-value to exactly 3 decimal places.
+
+        Parameters
+        ----------
+        x : float, str, or NaN
+            The p-value to format. Empty strings and NaN are returned as "".
+
+        Returns
+        -------
+        str
+            The p-value formatted as ``"X.XXX"``, or ``""`` for missing values.
+        """
         if x == "" or not pd.notna(x):
             return ""
         else:
@@ -49,6 +77,23 @@ class Summary:
 
     @staticmethod
     def fmt_vif(x):
+        """Format a Variance Inflation Factor (VIF) value.
+
+        Similar to :meth:`fmt_float` but uses 2 decimal places for values
+        >= 1 (instead of 3) since VIF values don't need sub-unit precision.
+
+        Parameters
+        ----------
+        x : float, str, or NaN
+            The VIF value to format. Empty strings and NaN are returned
+            as "" (used for the intercept term, which has no VIF).
+
+        Returns
+        -------
+        str
+            Formatted VIF string: 2 dp for |x| >= 1, 3 dp for |x| >= 0.01,
+            and scientific notation otherwise.
+        """
         if x == "" or not pd.notna(x):
             return ""
         try:
@@ -68,7 +113,21 @@ class Summary:
 
     @staticmethod
     def fmt_pct(x):
-        # Format proportion as percentage with 2 decimal places
+        """Format a proportion (0-1) as a percentage string.
+
+        Multiplies the value by 100 and appends a ``%`` sign.
+
+        Parameters
+        ----------
+        x : float, str, or NaN
+            A proportion between 0 and 1. Empty strings and NaN are
+            returned as "".
+
+        Returns
+        -------
+        str
+            Percentage string with 3 decimal places, e.g. ``"85.234%"``.
+        """
         if x == "" or not pd.notna(x):
             return ""
         try:
@@ -77,17 +136,32 @@ class Summary:
             return str(x)
 
     def fmt_int(x):
+        """Format a numeric value as an integer string (no decimal places).
+
+        Parameters
+        ----------
+        x : float, str, or NaN
+            The value to format. Empty strings and NaN are returned as-is.
+
+        Returns
+        -------
+        str
+            The value cast to int and converted to string, e.g. ``"5"``.
+        """
         return f"{int(x)}" if pd.notna(x) and x != "" else x
 
     @staticmethod
     def auto(results):
-        """Prints a summary of the model results.
+        """Detect the model type and print the appropriate Minitab-style summary.
+
+        Checks whether ``results`` is an OLS regression or ARIMA results
+        object and delegates to :meth:`regression` or :meth:`ARIMA`
+        accordingly. Prints an error message if the type is not recognized.
 
         Parameters
         ----------
-        results : RegressionResults or ARIMAResults object
-            The results of a model.
-        
+        results : RegressionResultsWrapper or ARIMAResultsWrapper
+            A fitted model results object from statsmodels.
         """
         if isinstance(results, sm.regression.linear_model.RegressionResultsWrapper):
             Summary.regression(results)
@@ -95,21 +169,37 @@ class Summary:
             Summary.ARIMA(results)
         else:
             print("The type of the results object is not supported.")
-        return
 
     @staticmethod
     def regression(results):
-        """Prints a summary of the regression results.
+        """Print a Minitab-style summary for an OLS regression model.
+
+        FIrst, the datatype is rechecked. In case users went straigh to Summary.regression(results) instead of auto
+
+        Outputs four sections to stdout:
+        1. **Regression Equation** -- the fitted equation as a readable string.
+        2. **Coefficients** -- a table of term names, coefficients, standard
+           errors, t-values, p-values, and Variance Inflation Factors (VIF).
+        3. **Model Summary** -- standard error of the regression (S),
+           R-squared, and adjusted R-squared.
+        4. **Analysis of Variance** -- ANOVA table with regression, per-term,
+           error, and total rows showing DF, SS, MS, F-value, and p-value.
+
+        .. warning::
+            This method sets ``np.set_printoptions`` and
+            ``pd.options.display.precision`` as a side effect.
 
         Parameters
         ----------
-        results : RegressionResults object
-            The results of a regression model. 
-
-        Returns
-        -------
-        None
+        results : RegressionResultsWrapper
+            A fitted OLS model from ``statsmodels.api.OLS(...).fit()``.
         """
+
+        # the first thingk to do is to reverify the instance type
+        checker = isinstance(results, sm.regression.linear_model.RegressionResultsWrapper)
+        if not checker:
+            print("The type of the results object is not supported")
+            return None
 
         # Set the precision of the output
         np.set_printoptions(precision=4, suppress=True)
@@ -142,10 +232,10 @@ class Summary:
             if results.model.exog_names[i] == 'Intercept':
                 equation += "%.3f" % coefficients[i]
             else:
-                if coefficients[i] > 0:
-                    equation += " + %.3f %s" % (coefficients[i], terms[i])
+                if coefficients.iloc[i] > 0:
+                    equation += " + %.3f %s" % (coefficients.iloc[i], terms[i])
                 else:
-                    equation += " %.3f %s" % (coefficients[i], terms[i])
+                    equation += " %.3f %s" % (coefficients.iloc[i], terms[i])
         print(equation)
 
         print("\nCOEFFICIENTS")
@@ -199,47 +289,65 @@ class Summary:
 
         print(df_anova.to_string(index=False))
 
-        return
-
     @staticmethod
     def ARIMA(results):
+        """Print a Minitab-style summary for a fitted ARIMA / SARIMA model.
 
-        """Prints a summary of the ARIMA results.
+        Outputs four sections to stdout:
+        1. **Model Order** -- the (p, d, q) order and, if applicable, the
+           seasonal (P, D, Q, s) order.
+        2. **Final Estimates of Parameters** -- coefficient table with term
+           names, estimates, standard errors, t-values, and p-values. For
+           pure AR models without differencing, the constant is adjusted to
+           match the Minitab convention: ``constant * (1 - sum(AR coeffs))``.
+        3. **Residual Sum of Squares** -- degrees of freedom, SSE, and MSE
+           computed from residuals after the first ``max(p, d, q)`` observations.
+        4. **Ljung-Box Chi-Square Statistics** -- autocorrelation diagnostic
+           at lags 12, 24, 36, and 48 (as many as the series length allows).
+
+        .. warning::
+            This method sets ``np.set_printoptions`` and
+            ``pd.options.display.precision`` as a side effect.
 
         Parameters
         ----------
-        results : ARIMA object
-            The results of an ARIMA.
-
-        Returns
-        -------
-        None
+        results : ARIMAResultsWrapper
+            A fitted ARIMA model, typically obtained from
+            ``Models.ARIMA(...)``.
         """
+
+        # the first thingk to do is to reverify the instance type
+        checker = isinstance(results, statsmodels.tsa.arima.model.ARIMAResultsWrapper)
+        if not checker:
+            print("The type of the results object is not supported")
+            return None
 
         # Set the precision of the output
         np.set_printoptions(precision=5, suppress=True)
         pd.options.display.precision = 5
 
         # Extract information from the result object
-        terms = results.param_names
-        coefficients = results.params
-        std_errors = results.bse
-        t_values = results.tvalues
+        terms = results.param_names #list(str)
+        coefficients = results.params #series
+        std_errors = results.bse #series
+        t_values = results.tvalues #series
         p_values = results.pvalues
-        n_coefficients = len(coefficients) - 1 #because models givers an additional information on sigma^2 in the list of coefficients
+        n_coefficients = len(coefficients) - 1 #because models give an additional information on sigma^2 in the list of coefficients
 
 
-        # get the order of the model
+        # get the order of the model and flags white noise processes
         n_model = results.nobs
-        ar_order = results.model.order[0]
-        ma_order = results.model.order[2]
-        diff_order = results.model.order[1]
-        order_model = results.model.order
-        order_model_flag = sum(order_model) > 0
-        max_order=np.max(results.model.order)
+        order_model = results.specification['order']
+        ar_order = order_model[0]
+        diff_order = order_model[1]
+        ma_order = order_model[2]
 
-        #get seasonal order vector
-        so_model = results.model.seasonal_order
+        # flagging if the fitted ARIMA is not a white noise process
+        order_model_flag = sum(order_model) > 0
+        max_order=np.max(order_model)
+
+        # get seasonal order vector (if SARIMA fitted instead of ARIMA) and flags models with seasonality
+        so_model = results.specification['seasonal_order']
         DIFF_seasonal_order = so_model[1]
         seasonal_model_flag = so_model[3] > 0
 
@@ -264,9 +372,9 @@ class Summary:
         # AR constant coefficient adjustment:
         if (ar_order != 0) & (diff_order == 0) & (ma_order == 0):
             AR_coefficients = coefficients[1 : ar_order + 1]
-            ARIMA_constant = coefficients[0]
+            ARIMA_constant = coefficients.iloc[0]
             adjusted_constant = ARIMA_constant * (1 - AR_coefficients.sum())
-            coefficients[0] = adjusted_constant
+            coefficients.iloc[0] = adjusted_constant
 
         df_coefficients = pd.DataFrame({'Term': terms[0:n_coefficients], 'Coef': coefficients[0:n_coefficients], 'SE Coef': std_errors[0:n_coefficients], 'T-Value': t_values[0:n_coefficients], 'P-Value': p_values[0:n_coefficients]})
         # Apply same formatting style as regression
@@ -316,68 +424,51 @@ class Summary:
             'P-Value': Summary.fmt_p
         }))
 
-        return
-
-def ARIMA(x, order, add_constant):
-    """Fits an ARIMA model.
-
-    Parameters
-    ----------
-    x : data object
-    
-    order : tuple
-        The order of the ARIMA model as (p, d, q)
-
-    add_constant : bool
-        True if the model should include a constant term, False otherwise
-
-    Returns
-    -------
-    None
-    """
-    p=order[0]
-    d=order[1]
-    q=order[2]
-
-    if add_constant:
-        const_coeff='c'
-    else:
-        const_coeff='n'
-
-
-    if d!=0:
-        x=x.diff(d)
-
-    results = arimafromlib(x, order=(p,0,q), trend=const_coeff).fit()
-
-    # fixing the wrong values in the ARIMA returned object
-    results.model.order = (p,d,q)
-
-    # fixing the wrong residuals and fittedvalues in the ARIMA returned object
-    results.resid[:np.max(results.model.order)] = np.nan
-    results.fittedvalues[:np.max(results.model.order)] = np.nan
-
-    return results
 
 class Models:
+    """Factory class for fitting time-series models.
+
+    Provides static methods that wrap statsmodels estimators with
+    pre-processing (e.g. manual differencing) and post-processing
+    (e.g. correcting residuals) to produce results compatible with
+    the :class:`Summary` printer.
+    """
+
     @staticmethod
-    def ARIMA(x, order, add_constant):
-        """Fits an ARIMA model.
+    def ARIMA(x, order=(0,0,0), add_constant=True):
+
+        """Fit an ARIMA(p, d, q) differencing handled automatically
+
+        Differences the series ``d`` times, then fits an ARMA(p, q) via
+        statsmodels. After fitting, the results object is patched so that:
+        - ``results.model.order`` reflects the original (p, d, q).
+        - The first ``max(p, d, q)`` residuals and fitted values are set
+          to NaN (they are unreliable due to differencing / burn-in).
 
         Parameters
         ----------
-        x : data object
-        
-        order : tuple
-            The order of the ARIMA model as (p, d, q)
-
+        x : pd.Series
+            The time series to model.
+        order : tuple of (int, int, int)
+            ARIMA order as ``(p, d, q)`` where *p* is the autoregressive
+            order, *d* is the differencing order, and *q* is the
+            moving-average order.
         add_constant : bool
-            True if the model should include a constant term, False otherwise
+            If True, include a constant (intercept / drift) term in the
+            model. If False, fit without a constant.
 
         Returns
         -------
-        None
+        ARIMAResultsWrapper
+            The fitted model results object (with patched order, residuals,
+            and fitted values).
         """
+
+        # first check if the order is a tuple or not
+        if not isinstance(order, tuple) or len(order) != 3:
+            raise TypeError("Order must be a tuple of length 3, e.g. (0,0,0)")
+
+        # fit the orders into autoregressive, integration, and moving average orders
         p=order[0]
         d=order[1]
         q=order[2]
@@ -387,54 +478,58 @@ class Models:
         else:
             const_coeff='n'
 
-
-        if d!=0:
-            x=x.diff(d)
-
-        results = arimafromlib(x, order=(p,0,q), trend=const_coeff).fit()
-
-        # fixing the wrong values in the ARIMA returned object
-        results.model.order = (p,d,q)
-
-        # fixing the wrong residuals and fittedvalues in the ARIMA returned object
-        results.resid[:np.max(results.model.order)] = np.nan
-        results.fittedvalues[:np.max(results.model.order)] = np.nan
+        results = arimafromlib(x, order=(p,d,q), trend=const_coeff).fit()
 
         return results
 
-# create a class called StepwiseRegression that performs stepwise regression when fitting a model
+
 class StepwiseRegression:
+    """Stepwise variable selection for OLS regression.
 
-    """Performs stepwise regression.
+    Iteratively adds and/or removes predictors from a linear regression
+    model based on p-value thresholds, printing intermediate results at
+    each step. Supports three selection strategies via the ``direction``
+    parameter: forward-only, backward-only, or both (forward then backward
+    at each step).
 
-    Parameters
+    The workflow follows a scikit-learn-like pattern::
+
+        model = StepwiseRegression(direction='both', alpha_to_enter=0.15)
+        model.fit(y, X)
+        # final fitted OLS results available at model.model_fit
+
+    Attributes
     ----------
-    
-    y : array-like
-        The dependent variable.
-    X : array-like
-        The independent variables.
-    
-    add_constant : bool, optional
-        Whether to add a constant to the model. The default is True.
-    direction : string, optional
-        The direction of stepwise regression. The default is 'both'.
-    alpha_to_enter : float, optional
-        The alpha level to enter a variable in the forward step. The default is 0.15.
-    alpha_to_remove : float, optional
-        The alpha level to remove a variable in the backward step. The default is 0.15.
-    max_iterations : int, optional
-        The maximum number of iterations. The default is 100.
-
-    Returns
-    -------
-    model_fit : RegressionResults object
-        The results of a regression model.
-
+    model_fit : RegressionResultsWrapper or None
+        The OLS results object after fitting. None before :meth:`fit`
+        is called.
+    variables_to_include : list of int
+        Column indices (into ``X``) of the predictors currently in the model.
     """
 
-    # initialize the class
     def __init__(self, add_constant = True, direction = 'both', alpha_to_enter = 0.15, alpha_to_remove = 0.15, max_iterations = 100):
+        """Initialize the stepwise regression configuration.
+
+        Parameters
+        ----------
+        add_constant : bool, optional
+            If True, an intercept column is added to the design matrix
+            at each step. Default is True.
+        direction : {'both', 'forward', 'backward'}, optional
+            Selection strategy. ``'forward'`` adds one variable per step,
+            ``'backward'`` removes variables per step, ``'both'`` performs
+            a forward step followed by a backward step each iteration.
+            Default is ``'both'``.
+        alpha_to_enter : float, optional
+            Maximum p-value for a predictor to be added during forward
+            selection. Default is 0.15.
+        alpha_to_remove : float, optional
+            Minimum p-value above which a predictor is removed during
+            backward elimination. Default is 0.15.
+        max_iterations : int, optional
+            Safety limit on the number of forward/backward iterations.
+            Default is 100.
+        """
         self.add_constant = add_constant
         self.direction = direction
         self.alpha_to_enter = alpha_to_enter
@@ -443,8 +538,28 @@ class StepwiseRegression:
         self.break_loop = False
         self.model_fit = None
 
-    # define a function to fit the model
     def fit(self, y, X):
+        """Run the stepwise selection procedure and fit the final model.
+
+        Iterates forward selection, backward elimination, or both (depending
+        on ``self.direction``) until no more variables can be added or
+        removed, or ``max_iterations`` is reached. Prints step-by-step
+        progress to stdout.
+
+        Parameters
+        ----------
+        y : pd.Series or array-like
+            The response (dependent) variable.
+        X : pd.DataFrame
+            The predictor (independent) variables. Column names are used
+            as term labels in the output.
+
+        Returns
+        -------
+        self
+            The fitted ``StepwiseRegression`` instance. The final OLS
+            results are stored in ``self.model_fit``.
+        """
         self.X = X
         self.y = y
         self.variables_to_include = []
@@ -487,6 +602,17 @@ class StepwiseRegression:
         return self
 
     def forward_selection(self):
+        """Perform one forward selection step.
+
+        Tries adding each predictor not yet in the model one at a time,
+        fits an OLS for each candidate, and keeps the one whose p-value
+        is below ``alpha_to_enter`` and is the smallest. If no candidate
+        qualifies, sets ``self.break_loop = True`` to stop iteration.
+
+        Returns
+        -------
+        self
+        """
 
         print('Forward Selection')
 
@@ -518,10 +644,13 @@ class StepwiseRegression:
 
                 model_fit = sm.OLS(self.y, X_test).fit()
 
+                # get the p value from the fitted regression
+                pval = model_fit.pvalues.iloc[-1]
+
                 # if the p-value of the new variable is less than the alpha_to_enter level, 
                 # add the variable to the list of variables to include
-                if model_fit.pvalues[-1] < self.alpha_to_enter and model_fit.pvalues[-1] < selected_pvalue:
-                    selected_pvalue = model_fit.pvalues[-1]
+                if pval < self.alpha_to_enter and pval < selected_pvalue:
+                    selected_pvalue = pval
                     self.variables_to_include = testing_variables
                     self.model_fit = model_fit
 
@@ -536,6 +665,18 @@ class StepwiseRegression:
 
 
     def backward_elimination(self):
+        """Perform one backward elimination step.
+
+        Sorts the current model's predictor p-values in descending order
+        and removes all predictors whose p-value exceeds
+        ``alpha_to_remove``. If no predictor is removed, the model is
+        unchanged (and ``self.break_loop`` is set to True when running
+        in pure backward mode).
+
+        Returns
+        -------
+        self
+        """
 
         print('Backward Elimination')
 
@@ -550,7 +691,7 @@ class StepwiseRegression:
         testing_variables = original_variables.copy()
 
         for i in range(len(sorted_pvalues)):
-            if sorted_pvalues[i] > self.alpha_to_remove:
+            if sorted_pvalues.iloc[i] > self.alpha_to_remove:
                 variable_to_remove = sorted_pvalues.index[i]
                 testing_variables.remove(self.X.columns.get_loc(variable_to_remove))
             else:
@@ -573,6 +714,16 @@ class StepwiseRegression:
         return self
 
     def SWsummary(self):
+        """Print a compact summary of the current stepwise model.
+
+        Outputs two sections to stdout:
+        1. **Coefficients** -- term names, coefficient estimates, and p-values.
+        2. **Model Summary** -- standard error of the regression (S),
+           R-squared, and adjusted R-squared.
+
+        This is a lighter version of :meth:`Summary.regression` used for
+        intermediate stepwise output (no ANOVA or VIF).
+        """
         # Extract information from the result object
         results = self.model_fit
         terms = results.model.exog_names
@@ -619,49 +770,82 @@ class StepwiseRegression:
         df_model_summary = pd.DataFrame({'S': [S], 'R-sq': [results.rsquared], 'R-sq(adj)': [results.rsquared_adj]})
         print(df_model_summary.to_string(index=False))
 
-        return
-
-
 class Assumptions:
-    """Test the normality and independence assumptions on data.
+    """Statistical assumption checker for normality and independence.
+
+    Provides methods to test whether data satisfy the normality and
+    independence assumptions commonly required by regression and
+    time-series models. Each method prints test results to stdout and
+    optionally produces diagnostic plots (Q-Q, ACF, PACF).
 
     Parameters
     ----------
-    data : DataFrame
-        The data to test for assumptions.
+    data : pd.Series, pd.DataFrame, or np.ndarray
+        The data to test. If a DataFrame is passed, multi-column methods
+        like :meth:`all` will test each column separately. numpy arrays
+        are automatically converted to ``pd.Series`` with a warning.
+        NaN values are dropped on initialization.
 
-    Returns
-    -------
-    None
+    Attributes
+    ----------
+    data : pd.Series or pd.DataFrame
+        The stored data with NaN values removed.
     """
 
     def __init__(self, data):
-        if isinstance(data, np.ndarray):
-            warnings.warn(
-                "A numpy array was passed to the Assumptions class and converted to Pandas Series.\n"
-                "Note that all other methods in qda-toolkit only accept Pandas Series or Pandas Dataframe.",
-                UserWarning
-            )
-            data = pd.Series(data)
-        self.data = data.dropna()
-
-    def normality(self, qqplot=True, test='shapiro-wilk'):
-        """Test the normality of the data.
+        """Initialize the Assumptions checker.
 
         Parameters
         ----------
-        qqplot : bool, optional
-            If True, plots the Q-Q plot. Default is True.
-        test : str, optional
-            Type of test to perform: 'shapiro-wilk' or 'anderson-darling'. Default is 'shapiro-wilk'.
+        data : pd.Series, pd.DataFrame, or np.ndarray
+            The data to test. numpy arrays are converted to ``pd.Series``
+            with a warning. NaN values are dropped automatically.
+        """
+        if isinstance(data, np.ndarray):
+            warnings.warn(
+                "A numpy array was passed to the Assumptions class and converted to pd.Series.\n"
+                "Note that all other methods in qda-toolkit only accept pd.Series and pd.DataFrame.",
+                UserWarning
+            )
+            data = pd.Series(data)
+
+        if isinstance(data, pd.DataFrame):
+            if data.shape[1] == 1:
+                data = data.squeeze()
+
+        self.data = data.dropna()
+
+    def normality(self, qqplot=True, test='shapiro-wilk'):
+
+        """Test whether the data follow a normal distribution.
+
+        Runs a formal hypothesis test for normality and optionally displays
+        a Q-Q plot for visual inspection. The null hypothesis is that the
+        data are normally distributed.
+
+        Parameters
+        ----------
+        qqplot : bool, optional, default = True
+            If True, display a Q-Q (quantile-quantile) plot comparing the
+            data quantiles against a theoretical normal distribution.
+
+        test : {'shapiro-wilk', 'anderson-darling'}, optional. default = 'shapiro-wilk'
+            Which normality test to perform
+            For the Anderson-Darling test, the p-value is approximated
+            using the D'Agostino & Stephens (1986) formulas.
 
         Returns
         -------
         stat : float
-            Test statistic.
+            The test statistic (W for Shapiro-Wilk, A² for Anderson-Darling).
         p_value : float
-            P-value of the test.
+            The p-value of the test. Small values (e.g. < 0.05) indicate
+            the data are unlikely to be normally distributed.
         """
+
+        if isinstance(self.data, pd.DataFrame):
+            if self.data.shape[1] > 1:
+                raise TypeError("Data not supported, please specify the column name or use Assumptions(data).all() instead")
 
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
@@ -688,30 +872,46 @@ class Assumptions:
         return stat, p_value
 
     def independence(self, plotit=True, ac_test='runs', lag=None, nlags=None):
-        """Test the independence of the data.
+
+        """Test whether the data are independent (free of autocorrelation).
+
+        Runs a formal hypothesis test for serial independence and optionally
+        displays ACF and PACF plots. The null hypothesis is that the data
+        are independent (no autocorrelation).
 
         Parameters
         ----------
-        plots : bool, optional
-            If True, plots the ACF and PACF. Default is True.
-        runs_test : bool, optional
-            If True, performs the runs test. Default is True.
-        ac_test : str, optional
-            Type of autocorrelation test to perform: 'runs', 'bartlett' or 'lbq'. Default is 'runs'.
+        plotit : bool, optional
+            If True, display ACF and PACF plots. Default is True.
+
+        ac_test : {'runs', 'bartlett', 'lbq'}, optional
+            Which independence test to perform. Default is ``'runs'``.
+
+            - ``'runs'`` -- Wald-Wolfowitz runs test (non-parametric).
+            - ``'bartlett'`` -- tests whether the autocorrelation at a
+              specific ``lag`` is significantly different from zero using
+              Bartlett's approximation.
+            - ``'lbq'`` -- Ljung-Box Q test for cumulative autocorrelation
+              up to a specific ``lag``.
         lag : int, optional
-            The lag to use for the autocorrelation test. Default is None. 
-            Must be specified if ac_test is 'bartlett' or 'lbq'.
+            The specific lag to test. **Required** when ``ac_test`` is
+            ``'bartlett'`` or ``'lbq'``; ignored for ``'runs'``.
         nlags : int, optional
-            The number of lags to use for the ACF and PACF plots. Default is None.
+            Number of lags to display in the ACF/PACF plots. If None,
+            defaults to ``min(len(data) // 3, 200)``.
 
         Returns
         -------
-        stat : float
-            Test statistic for selected ac_test test.
-        p_value : float
-            P-value for selected ac_test test.
-
+        stat : float or None
+            The test statistic, or None if the test was not run.
+        p_value : float or None
+            The p-value. Small values (e.g. < 0.05) suggest the data
+            exhibit significant autocorrelation.
         """
+
+        if isinstance(self.data, pd.DataFrame):
+            if self.data.shape[1] > 1:
+                    raise TypeError("Data not supported, please specify the column name or use Assumptions(data).all() instead")
 
         stat, p_value = None, None
 
@@ -758,80 +958,114 @@ class Assumptions:
         return stat, p_value
     
     def all(self, norm_test='shapiro-wilk', ac_test='runs', lag=None, nlags=None, plotit=True):
-        
-        # get how many columns the data has
-        if isinstance(self.data, pd.DataFrame):
-            n_cols = self.data.shape[1]
-        else:
-            n_cols = 1 # if the data is a Series, it has only one column
 
-        if nlags is None:
-            nlags = min(len(self.data) // 3, 200)
+        """Run both normality and independence tests on every column at once.
+
+        For each column in ``self.data``, performs the specified normality
+        and independence tests, collects the p-values into a summary
+        DataFrame, and optionally generates a grid of Q-Q, ACF, and PACF
+        plots (one column of plots per data column).
+
+        Parameters
+        ----------
+        norm_test : {'shapiro-wilk', 'anderson-darling'}, optional
+            Normality test to use. Default is ``'shapiro-wilk'``.
+        ac_test : {'runs', 'bartlett', 'lbq'}, optional
+            Independence test to use. Default is ``'runs'``.
+        lag : int, optional
+            Lag for ``'bartlett'`` or ``'lbq'`` tests. Required if
+            ``ac_test`` is not ``'runs'``.
+        nlags : int, optional
+            Number of lags for the ACF/PACF plots. If None, defaults to
+            ``min(len(data) // 3, 200)``.
+        plotit : bool, optional
+            If True, display a grid of Q-Q, ACF, and PACF plots for
+            every column. Default is True.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame with columns matching ``self.data.columns`` and
+            two rows: one for the normality test p-value and one for the
+            independence test p-value.
+        """
+
+        if not isinstance(self.data, pd.DataFrame):
+            raise TypeError("Data not supported, please enter a pd.DataFrame with n > 1 columns")
+        
         else:
-            # check if the number of lags is less than the length of the data
-            if nlags > len(self.data):
-                raise ValueError("The number of lags must be less than the length of the data.")
-            
-        
-        
-        assumptions_results = pd.DataFrame(columns=self.data.columns, index=[norm_test+'test P-Value', ac_test+' test P-Value'])
-        fig, axes = plt.subplots(3, n_cols, figsize=(12, 5 * n_cols))
-        for i, col in enumerate(self.data.columns):
-            
-            if norm_test == 'shapiro-wilk':
-                _, p_value_norm = stats.shapiro(self.data[col])
-            elif norm_test == 'anderson-darling':
-                result = stats.anderson(self.data[col], dist='norm')
-                stat = result.statistic
-                if stat >= 0.6:
-                    p_value_norm = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
-                elif stat >= 0.34:
-                    p_value_norm = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
-                elif stat >= 0.2:
-                    p_value_norm = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
-                else:
-                    p_value_norm = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+
+            # get how many columns the data has
+            if isinstance(self.data, pd.DataFrame):
+                n_cols = self.data.shape[1]
             else:
-                raise ValueError("Invalid normality test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
-            
-            acf_values, stat_lbq, _ = acf(self.data[col], nlags = nlags, qstat=True, fft = False)
+                n_cols = 1 # if the data is a Series, it has only one column
 
-            # check if the lag is specified for the Bartlett or LBQ test
-            if ac_test in ['bartlett', 'lbq'] and lag is None:
-                raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
-
-            if ac_test == 'runs':
-                stat, p_value_indep = runstest_1samp(self.data[col], correction=False)
-
-            elif ac_test == 'bartlett':
-                rk = acf_values[lag]
-                stat = rk
-                p_value_indep = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data[col]))))
+            if nlags is None:
+                nlags = min(len(self.data) // 3, 200)
+            else:
+                # check if the number of lags is less than the length of the data
+                if nlags > len(self.data):
+                    raise ValueError("The number of lags must be less than the length of the data.")
                 
-            elif ac_test == 'lbq':
-                stat = stat_lbq[lag - 1]
-                p_value_indep = 1 - stats.chi2.cdf(stat, lag)
+            assumptions_results = pd.DataFrame(columns=self.data.columns, index=[norm_test+'test P-Value', ac_test+' test P-Value'])
+            fig, axes = plt.subplots(3, n_cols, figsize=(12, 5 * n_cols))
+            for i, col in enumerate(self.data.columns):
+                
+                if norm_test == 'shapiro-wilk':
+                    _, p_value_norm = stats.shapiro(self.data[col])
+                elif norm_test == 'anderson-darling':
+                    result = stats.anderson(self.data[col], dist='norm')
+                    stat = result.statistic
+                    if stat >= 0.6:
+                        p_value_norm = np.exp(1.2937 - 5.709 * stat + 0.0186 * (stat ** 2))
+                    elif stat >= 0.34:
+                        p_value_norm = np.exp(0.9177 - 4.279 * stat - 1.38 * (stat ** 2))
+                    elif stat >= 0.2:
+                        p_value_norm = 1 - np.exp(-8.318 + 42.796 * stat - 59.938 * (stat ** 2))
+                    else:
+                        p_value_norm = 1 - np.exp(-13.436 + 101.14 * stat - 223.73 * (stat ** 2))
+                else:
+                    raise ValueError("Invalid normality test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
+                
+                acf_values, stat_lbq, _ = acf(self.data[col], nlags = nlags, qstat=True, fft = False)
 
-            assumptions_results.loc[norm_test + ' test P-Value', col] = p_value_norm
-            assumptions_results.loc[ac_test + ' test P-Value', col] = p_value_indep
+                # check if the lag is specified for the Bartlett or LBQ test
+                if ac_test in ['bartlett', 'lbq'] and lag is None:
+                    raise ValueError("The lag must be specified for the Bartlett or LBQ test.")
 
-            if plotit:
-                # Q-Q plot
-                stats.probplot(self.data[col], dist="norm", plot=axes[0, i])
-                axes[0, i].set_title(f'Q-Q Plot for {col}')
+                if ac_test == 'runs':
+                    stat, p_value_indep = runstest_1samp(self.data[col], correction=False)
 
-                # ACF plot
-                sgt.plot_acf(self.data[col], lags=nlags, zero=False, ax=axes[1, i])
-                axes[1, i].set_title(f'ACF Plot for {col}')
-                axes[1, i].set_ylim(-1, 1)
+                elif ac_test == 'bartlett':
+                    rk = acf_values[lag]
+                    stat = rk
+                    p_value_indep = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data[col]))))
+                    
+                elif ac_test == 'lbq':
+                    stat = stat_lbq[lag - 1]
+                    p_value_indep = 1 - stats.chi2.cdf(stat, lag)
 
-                # PACF plot
-                sgt.plot_pacf(self.data[col], lags=nlags, zero=False, ax=axes[2, i], method='ywm')
-                axes[2, i].set_title(f'PACF Plot for {col}')
-                axes[2, i].set_ylim(-1, 1)
+                assumptions_results.loc[norm_test + ' test P-Value', col] = p_value_norm
+                assumptions_results.loc[ac_test + ' test P-Value', col] = p_value_indep
 
-        print(assumptions_results)
-        plt.tight_layout()
-        plt.show()
-        
-        return assumptions_results
+                if plotit:
+                    # Q-Q plot
+                    stats.probplot(self.data[col], dist="norm", plot=axes[0, i])
+                    axes[0, i].set_title(f'Q-Q Plot for {col}')
+
+                    # ACF plot
+                    sgt.plot_acf(self.data[col], lags=nlags, zero=False, ax=axes[1, i])
+                    axes[1, i].set_title(f'ACF Plot for {col}')
+                    axes[1, i].set_ylim(-1, 1)
+
+                    # PACF plot
+                    sgt.plot_pacf(self.data[col], lags=nlags, zero=False, ax=axes[2, i], method='ywm')
+                    axes[2, i].set_title(f'PACF Plot for {col}')
+                    axes[2, i].set_ylim(-1, 1)
+
+            print(assumptions_results)
+            plt.tight_layout()
+            plt.show()
+            
+            return assumptions_results
