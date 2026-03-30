@@ -816,7 +816,6 @@ class Assumptions:
         self.data = data.dropna()
 
     def normality(self, qqplot=True, test='shapiro-wilk'):
-        # TODO: add feature chi squared test
 
         """Test whether the data follow a normal distribution.
 
@@ -873,7 +872,6 @@ class Assumptions:
         return stat, p_value
 
     def independence(self, plotit=True, ac_test='runs', lag=None, nlags=None):
-        # TODO: modify handling for DataFrames and not df['colname']
 
         """Test whether the data are independent (free of autocorrelation).
 
@@ -960,7 +958,6 @@ class Assumptions:
         return stat, p_value
     
     def all(self, norm_test='shapiro-wilk', ac_test='runs', lag=None, nlags=None, plotit=True):
-        # TODO: FIX BUGS
 
         """Run both normality and independence tests on every column at once.
 

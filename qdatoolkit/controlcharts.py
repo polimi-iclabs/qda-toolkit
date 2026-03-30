@@ -939,12 +939,6 @@ class ControlCharts:
         # Add a column with the test
         sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > sample_mean['UCL'], sample_mean['T2'], np.nan)
 
-        # test
-        """
-        WARNING: DATA HAS NANS, ROOT CAUSED TO BE CHECKED NOW
-        TODO: check operations involving sample_mean and find the NaN root cause
-        """
-
         # Plot the Hotelling T2 statistic
         if plotit == True:
             plt.plot(sample_mean['UCL'], color='firebrick', linewidth=1)
