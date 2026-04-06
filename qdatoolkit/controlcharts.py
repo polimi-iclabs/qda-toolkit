@@ -8,7 +8,7 @@ import scipy.special as sps
 
 class ControlCharts:
     @staticmethod
-    def I(original_df, col_name, K = 3, subset_size = None, plotit = True):
+    def I(original_df, col_name, K=3, subset_size=None, mean=None, sigma=None, plotit=True):
         """Implements the Individual (I) chart.
         Parameters
         ----------
@@ -20,11 +20,15 @@ class ControlCharts:
             The number of standard deviations. Default is 3.
         subset_size : int, optional
             The number of rows to be used for the IMR chart. Default is None and all rows are used.
+        mean : float, optional
+            The known process mean. If None, it is estimated from the data. Default is None.
+        sigma : float, optional
+            The known process standard deviation. If None, it is estimated from MR/d2. Default is None.
 
         Returns
         -------
         chart : matplotlib.axes._subplots.AxesSubplot
-            The IMR chart.
+            The I chart.
 
         df_I : pandas.DataFrame with the following additional columns
             - MR: The moving range
@@ -33,38 +37,36 @@ class ControlCharts:
             - I_LCL: The lower control limit for the individual
             - I_TEST1: The points that violate the alarm rule for the individual
         """
-        # Check if df is a pandas DataFrame
         if not isinstance(original_df, pd.DataFrame):
             raise TypeError('The data must be a pandas DataFrame.')
 
-        # Check if the col_name exists in the DataFrame
         if col_name not in original_df.columns:
             raise ValueError('The column name does not exist in the DataFrame.')
 
-        # get the size of the DataFrame
         n = 2
         d2 = constants.getd2(n)
-        D4 = constants.getD4(n, K)
 
         if subset_size is None:
             subset_size = len(original_df)
         elif subset_size > len(original_df):
             raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
 
-        # Create a copy of the original DataFrame
         df = original_df.copy()
-        
-        # Calculate the moving range
+
         df['MR'] = df[col_name].diff().abs()
-        # Create columns for the upper and lower control limits
-        df['I_UCL'] = df[col_name].iloc[:subset_size].mean() + (K*df['MR'].iloc[:subset_size].mean()/d2)
-        df['I_CL'] = df[col_name].iloc[:subset_size].mean()
-        df['I_LCL'] = df[col_name].iloc[:subset_size].mean() - (K*df['MR'].iloc[:subset_size].mean()/d2)
-        # Define columns for the Western Electric alarm rules
+
+        # Use provided mean or estimate from data
+        I_mean = mean if mean is not None else df[col_name].iloc[:subset_size].mean()
+
+        # Use provided sigma or estimate from MR/d2
+        I_sigma = sigma if sigma is not None else df['MR'].iloc[:subset_size].mean() / d2
+
+        df['I_UCL'] = I_mean + K * I_sigma
+        df['I_CL'] = I_mean
+        df['I_LCL'] = I_mean - K * I_sigma
         df['I_TEST1'] = np.where((df[col_name] > df['I_UCL']) | (df[col_name] < df['I_LCL']), df[col_name], np.nan)
 
-        if plotit == True:
-            # Plot the I and MR charts
+        if plotit:
             plt.title(('I chart of %s' % col_name))
             plt.plot(df[col_name], color='mediumblue', linestyle='--', marker='o')
             plt.plot(df['I_UCL'], color='firebrick', linewidth=1)
@@ -88,6 +90,7 @@ class ControlCharts:
             plt.show()
 
         return df
+
 
     @staticmethod
     def IMR(original_df, col_name, K = 3, subset_size = None, run_rules = False, plotit = True):
@@ -878,7 +881,7 @@ class ControlCharts:
 
         return sample_mean
 
-    def P(original_df, defects_col, subgroup_size, subset_size=None, known_params=None, plotit=True):
+    def P(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
 
         '''
         This function plots the P chart of a DataFrame
@@ -934,8 +937,8 @@ class ControlCharts:
         # UCL, LCL, CL
         original_df['std_dev'] = stdev
         original_df['P_CL'] = mean
-        original_df['P_UCL'] = original_df['P_CL'] + 3 * original_df['std_dev']
-        original_df['P_LCL'] = original_df['P_CL'] - 3 * original_df['std_dev']
+        original_df['P_UCL'] = original_df['P_CL'] + K * original_df['std_dev']
+        original_df['P_LCL'] = original_df['P_CL'] - K * original_df['std_dev']
         original_df['P_LCL'] = original_df['P_LCL'].clip(lower=0)  # LCL cannot be <0
         original_df['P_TEST1'] = np.where((original_df['p'] > original_df['P_UCL']) | (original_df['p'] < original_df['P_LCL']), original_df['p'], np.nan)
 
@@ -967,7 +970,269 @@ class ControlCharts:
 
         return original_df
     
+    def NP(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
 
+        '''
+        This function plots the NP chart of a DataFrame
+        and returns the DataFrame with the control limits and alarm rules.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+        defects_col : str
+            The name of the column in the DataFrame that contains the number of defects.
+        subgroup_size : int
+            int equal to the size of the subgroup. 
+        sample_size : int
+            The number of rows to be used for the NP chart. Default is None and all rows are used.
+        known_params : float, optional
+            The value of the mean proportion. The default is None.
+            If None, the function will calculate the mean proportion from the data.
+        plotit : bool, optional
+            If True, the function will plot the NP chart. The default is True.
+        '''
+        
+        if subset_size is None:
+            subset_size = len(original_df)
+        elif subset_size > len(original_df):
+            raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
+
+        if known_params is not None:
+            if known_params < 0 or known_params > 1:
+                raise ValueError('The value of the mean proportion must be between 0 and 1.')
+            p_hat = known_params
+        else:
+            p_hat = original_df[defects_col].iloc[:subset_size].sum() / (subgroup_size * subset_size)
+
+        # Calculate the control limits
+        original_df['NP_CL'] = subgroup_size * p_hat
+        original_df['NP_UCL'] = original_df['NP_CL'] + K * np.sqrt(subgroup_size * p_hat * (1 - p_hat))
+        original_df['NP_LCL'] = np.maximum(0, original_df['NP_CL'] - K * np.sqrt(subgroup_size * p_hat * (1 - p_hat)))
+        original_df['NP_TEST1'] = np.where((original_df[defects_col] > original_df['NP_UCL']) | (original_df[defects_col] < original_df['NP_LCL']), original_df[defects_col], np.nan)
+        
+        if plotit:
+            plt.figure()
+            plt.plot(original_df[defects_col], marker='o', linestyle='-', color='blue', label='Defectives per Sample')
+            plt.plot(original_df['NP_CL'], color='g', linestyle='-', linewidth=1)
+            plt.plot(original_df['NP_UCL'], color='firebrick', linestyle='-', linewidth=1)
+            plt.plot(original_df['NP_LCL'], color='firebrick', linestyle='-', linewidth=1)
+            plt.plot(original_df['NP_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            plt.title('np-control chart')
+            plt.xlabel('Sample')
+            plt.ylabel('Defectives per Sample')
+            # add the values of the control limits on the right side of the plot
+            plt.text(len(original_df)+.5, original_df['NP_UCL'].iloc[0], 'UCL = {:.3f}'.format(original_df['NP_UCL'].iloc[-1]), verticalalignment='center')
+            plt.text(len(original_df)+.5, original_df['NP_CL'].iloc[0], 'CL = {:.3f}'.format(original_df['NP_CL'].iloc[-1]), verticalalignment='center')
+            plt.text(len(original_df)+.5, original_df['NP_LCL'].iloc[0], 'LCL = {:.3f}'.format(original_df['NP_LCL'].iloc[-1]), verticalalignment='center')
+            # set the x-axis limits
+            plt.xlim(-1, len(original_df))
+            if subset_size < len(original_df):
+                plt.vlines(subset_size-.5, original_df['NP_LCL'].iloc[-1], original_df['NP_UCL'].iloc[-1], color='k', linestyle='--')
+            plt.tight_layout()
+            plt.show()
+            
+        return original_df
+    
+    @staticmethod
+    def C(original_df, defects_col, K=3, subset_size=None, known_params=None, plotit=True):
+        '''
+        This function plots the C chart of a DataFrame
+        and returns the DataFrame with the control limits and alarm rules.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+        defects_col : str
+            The name of the column in the DataFrame that contains the number of defects per sample.
+        K : int, optional
+            The number of standard deviations. The default is 3.
+        subset_size : int, optional
+            The number of rows to be used for the C chart. Default is None and all rows are used.
+        known_params : float, optional
+            The known value of c_bar (average number of defects). If None, it is estimated from the data.
+        plotit : bool, optional
+            If True, the function will plot the C chart. The default is True.
+
+        Returns
+        -------
+        df : DataFrame
+            The DataFrame with the following additional columns:
+            - C_UCL: The upper control limit
+            - C_CL: The center line
+            - C_LCL: The lower control limit
+            - C_TEST1: The points that violate the alarm rule
+        '''
+        # Check if df is a pandas DataFrame
+        if not isinstance(original_df, pd.DataFrame):
+            raise TypeError('The data must be a pandas DataFrame.')
+
+        # Check if the defects_col exists in the DataFrame
+        if defects_col not in original_df.columns:
+            raise ValueError('The column name does not exist in the DataFrame.')
+
+        # Check that defect counts are non-negative integers
+        if (original_df[defects_col] < 0).any():
+            raise ValueError('The defect counts must be non-negative.')
+
+        if subset_size is None:
+            subset_size = len(original_df)
+        elif subset_size > len(original_df):
+            raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
+
+        df = original_df.copy()
+
+        # Use provided c_bar or estimate from data
+        c_bar = known_params if known_params is not None else df[defects_col].iloc[:subset_size].mean()
+
+        # Calculate control limits
+        df['C_UCL'] = c_bar + K * np.sqrt(c_bar)
+        df['C_CL'] = c_bar
+        df['C_LCL'] = max(0, c_bar - K * np.sqrt(c_bar))
+
+        # Define alarm rule (Test 1: points beyond control limits)
+        df['C_TEST1'] = np.where(
+            (df[defects_col] > df['C_UCL']) | (df[defects_col] < df['C_LCL']),
+            df[defects_col], np.nan
+        )
+
+        if plotit:
+            plt.figure()
+            plt.plot(df[defects_col], marker='o', linestyle='-', color='mediumblue')
+            plt.plot(df['C_UCL'], color='firebrick', linewidth=1)
+            plt.plot(df['C_CL'], color='g', linewidth=1)
+            plt.plot(df['C_LCL'], color='firebrick', linewidth=1)
+            plt.plot(df['C_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            plt.title('C chart of %s' % defects_col)
+            plt.xlabel('Sample')
+            plt.ylabel('Number of Defects')
+            # Add control limit labels on the right side
+            plt.text(len(df)+.5, df['C_UCL'].iloc[0], 'UCL = {:.3f}'.format(df['C_UCL'].iloc[0]), verticalalignment='center')
+            plt.text(len(df)+.5, df['C_CL'].iloc[0], 'CL = {:.3f}'.format(df['C_CL'].iloc[0]), verticalalignment='center')
+            plt.text(len(df)+.5, df['C_LCL'].iloc[0], 'LCL = {:.3f}'.format(df['C_LCL'].iloc[0]), verticalalignment='center')
+            plt.xlim(-1, len(df))
+
+            if subset_size < len(original_df):
+                plt.vlines(subset_size-.5, df['C_LCL'].iloc[0], df['C_UCL'].iloc[0], color='k', linestyle='--')
+
+            plt.tight_layout()
+            plt.show()
+
+        return df
+    
+    @staticmethod
+    def U(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
+        '''
+        This function plots the U chart of a DataFrame
+        and returns the DataFrame with the control limits and alarm rules.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+        defects_col : str
+            The name of the column in the DataFrame that contains the number of defects per sample.
+        subgroup_size : str or int
+            The name of the column in the DataFrame that contains the subgroup size
+            OR an int equal to the size of the subgroup.
+        K : int, optional
+            The number of standard deviations. The default is 3.
+        subset_size : int, optional
+            The number of rows to be used for the U chart. Default is None and all rows are used.
+        known_params : float, optional
+            The known value of u_bar (average number of defects per unit). If None, it is estimated from the data.
+        plotit : bool, optional
+            If True, the function will plot the U chart. The default is True.
+
+        Returns
+        -------
+        df : DataFrame
+            The DataFrame with the following additional columns:
+            - u: The number of defects per unit
+            - U_UCL: The upper control limit
+            - U_CL: The center line
+            - U_LCL: The lower control limit
+            - U_TEST1: The points that violate the alarm rule
+        '''
+        # Check if df is a pandas DataFrame
+        if not isinstance(original_df, pd.DataFrame):
+            raise TypeError('The data must be a pandas DataFrame.')
+
+        # Check if defects_col exists in the DataFrame
+        if defects_col not in original_df.columns:
+            raise ValueError('The column name does not exist in the DataFrame.')
+
+        # Check that defect counts are non-negative
+        if (original_df[defects_col] < 0).any():
+            raise ValueError('The defect counts must be non-negative.')
+
+        if subgroup_size is None:
+            raise ValueError('The subgroup size must be provided.')
+
+        if subset_size is None:
+            subset_size = len(original_df)
+        elif subset_size > len(original_df):
+            raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
+
+        df = original_df.copy()
+
+        # Resolve subgroup size: column name or fixed integer
+        if isinstance(subgroup_size, str):
+            if subgroup_size not in df.columns:
+                raise ValueError('The subgroup size column does not exist in the DataFrame.')
+            n = df[subgroup_size]
+        else:
+            n = subgroup_size
+
+        # Calculate defects per unit
+        df['u'] = df[defects_col] / n
+
+        # Use provided u_bar or estimate from data
+        if known_params is not None:
+            u_bar = known_params
+        else:
+            if isinstance(n, pd.Series):
+                u_bar = df[defects_col].iloc[:subset_size].sum() / n.iloc[:subset_size].sum()
+            else:
+                u_bar = df['u'].iloc[:subset_size].mean()
+
+        # Calculate control limits (variable width when subgroup size is a column)
+        df['U_UCL'] = u_bar + K * np.sqrt(u_bar / n)
+        df['U_CL'] = u_bar
+        df['U_LCL'] = (u_bar - K * np.sqrt(u_bar / n)).clip(lower=0)
+
+        # Define alarm rule (Test 1: points beyond control limits)
+        df['U_TEST1'] = np.where(
+            (df['u'] > df['U_UCL']) | (df['u'] < df['U_LCL']),
+            df['u'], np.nan
+        )
+
+        if plotit:
+            plt.figure()
+            plt.plot(df['u'], marker='o', linestyle='-', color='mediumblue')
+            plt.step(df.index, df['U_UCL'], where='mid', color='firebrick', linewidth=1)
+            plt.plot(df['U_CL'], color='g', linewidth=1)
+            plt.step(df.index, df['U_LCL'], where='mid', color='firebrick', linewidth=1)
+            plt.plot(df['U_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            plt.title('U chart of %s' % defects_col)
+            plt.xlabel('Sample')
+            plt.ylabel('Defects per Unit')
+            # Add control limit labels on the right side
+            plt.text(len(df)+.5, df['U_UCL'].iloc[-1], 'UCL = {:.3f}'.format(df['U_UCL'].iloc[-1]), verticalalignment='center')
+            plt.text(len(df)+.5, df['U_CL'].iloc[-1], 'CL = {:.3f}'.format(df['U_CL'].iloc[-1]), verticalalignment='center')
+            plt.text(len(df)+.5, df['U_LCL'].iloc[-1], 'LCL = {:.3f}'.format(df['U_LCL'].iloc[-1]), verticalalignment='center')
+            plt.xlim(-1, len(df))
+
+            if subset_size < len(original_df):
+                plt.vlines(subset_size-.5, df['U_LCL'].min(), df['U_UCL'].max(), color='k', linestyle='--')
+
+            plt.tight_layout()
+            plt.show()
+
+        return df
+    
+    
 class constants:
     @staticmethod
     def getd2(n=None):
