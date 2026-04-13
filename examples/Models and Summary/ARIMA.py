@@ -1,8 +1,16 @@
 #Import the necessary libraries
+from pathlib import Path
+import sys
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 import statsmodels.api as sm
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import qdatoolkit as qda
 
 #Import the dataset

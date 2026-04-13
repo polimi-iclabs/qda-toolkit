@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import qda
+import qdatoolkit as qda
 
 def test_CC_XbarR():
     np.random.seed(0)
@@ -39,6 +39,7 @@ def test_CC_T2hotelling():
     cc = qda.ControlCharts.T2hotelling(data, ['A', 'B'], (10,3), 0.0027)
 
 if __name__ == '__main__':
+    pass
     # test_CC_XbarR()
     # test_CC_XbarS()
     # test_CC_IMR()

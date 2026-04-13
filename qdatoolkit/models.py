@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import warnings
 
+
+def _show_plot():
+    if 'agg' in plt.get_backend().lower():
+        return
+    plt.show()
+
+
 def summary(results):
     return Summary.auto(results)
 
@@ -129,7 +136,7 @@ class Summary:
                 vifs[0]=""
 
         else:
-            if terms == 'const':
+            if terms=='const':
                 vifs = [""]
             else:
                 vifs = [1]
@@ -138,14 +145,14 @@ class Summary:
         print("REGRESSION EQUATION")
         print("-------------------")
         equation = ("%s = " % results.model.endog_names)
-        for i in range(len(coefficients)):
-            if results.model.exog_names[i] == 'Intercept':
-                equation += "%.3f" % coefficients[i]
+        for term, coefficient in zip(terms, np.asarray(coefficients)):
+            if term in ('Intercept', 'const'):
+                equation += "%.3f" % coefficient
             else:
-                if coefficients[i] > 0:
-                    equation += " + %.3f %s" % (coefficients[i], terms[i])
+                if coefficient > 0:
+                    equation += " + %.3f %s" % (coefficient, term)
                 else:
-                    equation += " %.3f %s" % (coefficients[i], terms[i])
+                    equation += " %.3f %s" % (coefficient, term)
         print(equation)
 
         print("\nCOEFFICIENTS")
@@ -222,10 +229,10 @@ class Summary:
 
         # Extract information from the result object
         terms = results.param_names
-        coefficients = results.params
-        std_errors = results.bse
-        t_values = results.tvalues
-        p_values = results.pvalues
+        coefficients = np.asarray(results.params).copy()
+        std_errors = np.asarray(results.bse)
+        t_values = np.asarray(results.tvalues)
+        p_values = np.asarray(results.pvalues)
         n_coefficients = len(coefficients) - 1 #because models givers an additional information on sigma^2 in the list of coefficients
 
 
@@ -520,8 +527,9 @@ class StepwiseRegression:
 
                 # if the p-value of the new variable is less than the alpha_to_enter level, 
                 # add the variable to the list of variables to include
-                if model_fit.pvalues[-1] < self.alpha_to_enter and model_fit.pvalues[-1] < selected_pvalue:
-                    selected_pvalue = model_fit.pvalues[-1]
+                last_pvalue = model_fit.pvalues.iloc[-1]
+                if last_pvalue < self.alpha_to_enter and last_pvalue < selected_pvalue:
+                    selected_pvalue = last_pvalue
                     self.variables_to_include = testing_variables
                     self.model_fit = model_fit
 
@@ -550,7 +558,7 @@ class StepwiseRegression:
         testing_variables = original_variables.copy()
 
         for i in range(len(sorted_pvalues)):
-            if sorted_pvalues[i] > self.alpha_to_remove:
+            if sorted_pvalues.iloc[i] > self.alpha_to_remove:
                 variable_to_remove = sorted_pvalues.index[i]
                 testing_variables.remove(self.X.columns.get_loc(variable_to_remove))
             else:
@@ -665,7 +673,7 @@ class Assumptions:
 
         if qqplot:
             stats.probplot(self.data, dist="norm", plot=plt)
-            plt.show()
+            _show_plot()
 
         if test == 'shapiro-wilk':
             stat, p_value = stats.shapiro(self.data)
@@ -753,7 +761,7 @@ class Assumptions:
             fig.subplots_adjust(hspace=0.5 if nlags <= 50 else 0.2)
             sgt.plot_pacf(self.data, lags=nlags, zero=False, ax=ax[1], method='ywm')
             ax[1].set_ylim(-1, 1)
-            plt.show()
+            _show_plot()
 
         return stat, p_value
     
@@ -832,6 +840,6 @@ class Assumptions:
 
         print(assumptions_results)
         plt.tight_layout()
-        plt.show()
+        _show_plot()
         
         return assumptions_results

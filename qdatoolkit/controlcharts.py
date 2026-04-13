@@ -6,6 +6,12 @@ import scipy.integrate as spi
 import scipy.special as sps
 
 
+def _show_plot():
+    if 'agg' in plt.get_backend().lower():
+        return
+    plt.show()
+
+
 class ControlCharts:
     @staticmethod
     def I(original_df, col_name, K=3, subset_size=None, mean=None, sigma=None, plotit=True):
@@ -87,7 +93,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, df['I_LCL'].iloc[0], df['I_UCL'].iloc[0], color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return df
 
@@ -198,7 +204,7 @@ class ControlCharts:
                 ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         '''
         TO DO - Implement the Western Electric alarm rules for the IMR chart
@@ -438,7 +444,7 @@ class ControlCharts:
                 ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return data_XR
     
@@ -561,7 +567,7 @@ class ControlCharts:
             ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
 
         plt.tight_layout()
-        plt.show()
+        _show_plot()
 
         return data_XS
 
@@ -657,7 +663,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, -H, H, color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return df_CUSUM
 
@@ -746,7 +752,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, df_EWMA['LCL'].iloc[-1], df_EWMA['UCL'].iloc[-1], color='k', linestyle='--')
             
             plt.tight_layout()
-            plt.show()
+            _show_plot()
         
         return df_EWMA
     
@@ -844,18 +850,19 @@ class ControlCharts:
 
         # Calculate the Hotelling T2 statistic for all the samples
         # Initialize the list to store the T2 values
-        sample_mean['T2'] = np.nan
-
         # calculate the inverse of the covariance matrix
         S_inv = np.linalg.inv(S)
 
+        t2_values = []
         for i in range(len(sample_mean)):
-            sample_mean['T2'].iloc[i] = n * (sample_mean[col_names].iloc[i]-Xbarbar).transpose().dot(S_inv).dot(sample_mean[col_names].iloc[i]-Xbarbar)
+            centered_sample = sample_mean[col_names].iloc[i] - Xbarbar
+            t2_values.append(n * centered_sample.transpose().dot(S_inv).dot(centered_sample))
+        sample_mean['T2'] = t2_values
 
         # add the UCL to the DataFrame up to m
         sample_mean['UCL'] = UCL1
         if len(sample_mean) > m:
-            sample_mean['UCL'].iloc[m:] = UCL2
+            sample_mean.loc[sample_mean.index[m:], 'UCL'] = UCL2
 
         # Add a column with the test
         sample_mean['T2_TEST'] = np.where(sample_mean['T2'] > sample_mean['UCL'], sample_mean['T2'], np.nan)
@@ -877,7 +884,7 @@ class ControlCharts:
             plt.xlabel('Sample')
             plt.ylabel('T$^2$')
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return sample_mean
 
@@ -965,7 +972,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, original_df['P_LCL'].iloc[-1], original_df['P_UCL'].iloc[-1], color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
             
 
         return original_df
@@ -1030,7 +1037,7 @@ class ControlCharts:
             if subset_size < len(original_df):
                 plt.vlines(subset_size-.5, original_df['NP_LCL'].iloc[-1], original_df['NP_UCL'].iloc[-1], color='k', linestyle='--')
             plt.tight_layout()
-            plt.show()
+            _show_plot()
             
         return original_df
     
@@ -1117,7 +1124,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, df['C_LCL'].iloc[0], df['C_UCL'].iloc[0], color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return df
     
@@ -1228,7 +1235,7 @@ class ControlCharts:
                 plt.vlines(subset_size-.5, df['U_LCL'].min(), df['U_UCL'].max(), color='k', linestyle='--')
 
             plt.tight_layout()
-            plt.show()
+            _show_plot()
 
         return df
     
