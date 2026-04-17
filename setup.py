@@ -2,7 +2,7 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 DESCRIPTION = 'Quality data analysis toolkit'
 LONG_DESCRIPTION = 'A package to create charts and models for statistical process control.'
 BASE_DIR = Path(__file__).resolve().parent

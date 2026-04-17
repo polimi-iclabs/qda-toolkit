@@ -653,7 +653,7 @@ class Assumptions:
             data = pd.Series(data)
         self.data = data.dropna()
 
-    def normality(self, qqplot=True, test='shapiro-wilk'):
+    def normality(self, qqplot=True, test='anderson-darling'):
         """Test the normality of the data.
 
         Parameters
@@ -661,7 +661,7 @@ class Assumptions:
         qqplot : bool, optional
             If True, plots the Q-Q plot. Default is True.
         test : str, optional
-            Type of test to perform: 'shapiro-wilk' or 'anderson-darling'. Default is 'shapiro-wilk'.
+            Type of test to perform: 'shapiro-wilk' or 'anderson-darling'. Default is 'anderson-darling'.
 
         Returns
         -------

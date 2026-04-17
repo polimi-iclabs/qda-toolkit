@@ -572,7 +572,7 @@ class ControlCharts:
         return data_XS
 
     @staticmethod
-    def CUSUM(data, col_name, params, mean = None, sigma_xbar = None, subset_size = None, plotit = True):
+    def CUSUM(data, col_name, h = 5, k = 0.5, mean = None, sigma = None, subset_size = None, FIR=False, plotit = True):
         '''
         This function plots the CUSUM chart of a DataFrame
         and returns the DataFrame with the CUSUM values.
@@ -583,14 +583,19 @@ class ControlCharts:
             The DataFrame that contains the data.
         col_name : str
             The name of the column in the DataFrame.
-        params : tuple
-            The values of the parameters h and k.
+        h : float, optional
+            The decision interval in terms of the number of standard deviations. The default is 5.
+        k : float, optional
+            The reference value in terms of the number of standard deviations. The default is 0.5.
         mean : float, optional
             The mean of the population. The default is None.
-        sigma_xbar : float, optional
+        sigma : float, optional
             The standard deviation of the population. The default is None.
         subset_size : int, optional
             The number of rows to be used for the IMR chart. Default is None and all rows are used.
+        FIR : bool, optional
+            If True, the function will use the Fast Initial Response (FIR) method to calculate the CUSUM values, with H/2 as the initial value.
+            The default is False.
         plotit : bool, optional
             If True, the function will plot the CUSUM chart. The default is True.
 
@@ -608,35 +613,66 @@ class ControlCharts:
         elif subset_size > len(data):
             raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
 
-        if sigma_xbar is None:
-            sigma_xbar = data.loc[:subset_size, col_name].std()
+        if sigma is None:
+            sigma = data.loc[:subset_size, col_name].std()
         
         if mean is None:
             xbarbar = data.loc[:subset_size, col_name].mean()
         else:   
             xbarbar = mean
 
-
-        
-        h, k = params
-
-        H = h*sigma_xbar
-        K = k*sigma_xbar
+        H = h*sigma
+        K = k*sigma
 
         df_CUSUM = data.copy()
+        if FIR == True:
+            FIR_value = 0.5 * H
+        else:
+            FIR_value = 0
+
         df_CUSUM['Ci+'] = 0.0
         df_CUSUM['Ci-'] = 0.0
 
         for i in range(len(df_CUSUM)):
             if i == 0:
-                df_CUSUM.loc[i, 'Ci+'] = max(0, df_CUSUM.loc[i, col_name] - (xbarbar + K))
-                df_CUSUM.loc[i, 'Ci-'] = max(0, (xbarbar - K) - df_CUSUM.loc[i, col_name])
+                df_CUSUM.loc[i, 'Ci+'] = max(0, df_CUSUM.loc[i, col_name] - (xbarbar + K) + FIR_value)
+                df_CUSUM.loc[i, 'Ci-'] = max(0, (xbarbar - K) - df_CUSUM.loc[i, col_name] + FIR_value)
             else:
                 df_CUSUM.loc[i, 'Ci+'] = max(0, df_CUSUM.loc[i, col_name] - (xbarbar + K) + df_CUSUM.loc[i-1, 'Ci+'])
                 df_CUSUM.loc[i, 'Ci-'] = max(0, (xbarbar - K) - df_CUSUM.loc[i, col_name] + df_CUSUM.loc[i-1, 'Ci-'])
 
         df_CUSUM['Ci+_TEST1'] = np.where((df_CUSUM['Ci+'] > H) | (df_CUSUM['Ci+'] < -H), df_CUSUM['Ci+'], np.nan)
         df_CUSUM['Ci-_TEST1'] = np.where((df_CUSUM['Ci-'] > H) | (df_CUSUM['Ci-'] < -H), df_CUSUM['Ci-'], np.nan)
+
+        # Create a time series Nh that is 0 when Ci+ is 0 and increases by 1 for every consecutive Ci+ > 0
+        Nh = pd.Series(0, index=df_CUSUM.index)
+        counter = 0
+        for idx in df_CUSUM.index:
+            if df_CUSUM.loc[idx, 'Ci+'] > 0:
+                # If Ci+ is positive, increment the counter
+                counter += 1
+                Nh[idx] = counter
+            else:
+                # If Ci+ is 0, reset the counter to 0
+                counter = 0
+                Nh[idx] = 0
+        # Add N+ column to the CUSUM dataframe
+        df_CUSUM['N+'] = Nh
+
+        # Create a time series Nh that is 0 when Ci- is 0 and increases by 1 for every consecutive Ci- > 0
+        Nh = pd.Series(0, index=df_CUSUM.index)
+        counter = 0
+        for idx in df_CUSUM.index:
+            if df_CUSUM.loc[idx, 'Ci-'] > 0:
+                # If Ci- is positive, increment the counter
+                counter += 1
+                Nh[idx] = counter
+            else:
+                # If Ci- is 0, reset the counter to 0
+                counter = 0
+                Nh[idx] = 0
+        # Add N- column to the CUSUM dataframe
+        df_CUSUM['N-'] = Nh
 
         if plotit == True:
             # Plot the control limits
@@ -645,8 +681,8 @@ class ControlCharts:
             plt.hlines(-H, 0, len(df_CUSUM), color='firebrick', linewidth=1)
             # Plot the chart
             plt.title('CUSUM chart of %s (h=%.2f, k=%.2f)' % (col_name, h, k))
-            plt.plot(df_CUSUM['Ci+'], color='b', linestyle='-', marker='o')
-            plt.plot(-df_CUSUM['Ci-'], color='b', linestyle='-', marker='D')
+            plt.plot(df_CUSUM['Ci+'], color='mediumblue', linestyle='-', marker='o')
+            plt.plot(-df_CUSUM['Ci-'], color='mediumblue', linestyle='-', marker='D')
             # add the values of the control limits on the right side of the plot
             plt.text(len(df_CUSUM)+.5, H, 'UCL = {:.3f}'.format(H), verticalalignment='center')
             plt.text(len(df_CUSUM)+.5, 0, 'CL = {:.3f}'.format(0), verticalalignment='center')
@@ -668,7 +704,7 @@ class ControlCharts:
         return df_CUSUM
 
     @staticmethod
-    def EWMA(data, col_name, params, mean = None, sigma_xbar = None, subset_size = None, plotit = True):
+    def EWMA(data, col_name, lambda_, L = 3, mean = None, sigma = None, subset_size = None, plotit = True):
         '''
         This function plots the EWMA chart of a DataFrame
         and returns the DataFrame with the EWMA values.
@@ -679,11 +715,13 @@ class ControlCharts:
             The DataFrame that contains the data.
         col_name : str
             The name of the column in the DataFrame.
-        params : float
-            The value of the parameter lambda.
+        lambda_ : float
+            The smoothing parameter. 
+        L : float, optional
+             The number of standard deviations. The default is 3.
         mean : float, optional
             The mean of the population. The default is None.
-        sigma_xbar : float, optional
+        sigma : float, optional
             The standard deviation of the population. The default is None.
         subset_size : int, optional
             The number of rows to be used for the IMR chart. Default is None and all rows are used.
@@ -704,15 +742,13 @@ class ControlCharts:
         elif subset_size > len(data):
             raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
 
-        if sigma_xbar is None:
-            sigma_xbar = data.loc[:subset_size, col_name].std()
+        if sigma is None:
+            sigma = data.loc[:subset_size, col_name].std()
         
         if mean is None:
             xbarbar = data.loc[:subset_size, col_name].mean()        
         else:
             xbarbar = mean
-
-        lambda_ = params
 
         df_EWMA = data.copy()
         df_EWMA['a_t'] = lambda_/(2-lambda_) * (1 - (1-lambda_)**(2*np.arange(1, len(df_EWMA)+1)))
@@ -723,9 +759,9 @@ class ControlCharts:
             else:
                 df_EWMA.loc[i, 'z'] = lambda_*df_EWMA.loc[i, col_name] + (1-lambda_)*df_EWMA.loc[i-1, 'z']
         
-        df_EWMA['UCL'] = xbarbar + 3*sigma_xbar*np.sqrt(df_EWMA['a_t'])
+        df_EWMA['UCL'] = xbarbar + L * sigma*np.sqrt(df_EWMA['a_t'])
         df_EWMA['CL'] = xbarbar
-        df_EWMA['LCL'] = xbarbar - 3*sigma_xbar*np.sqrt(df_EWMA['a_t'])
+        df_EWMA['LCL'] = xbarbar - L * sigma*np.sqrt(df_EWMA['a_t'])
 
         df_EWMA['z_TEST1'] = np.where((df_EWMA['z'] > df_EWMA['UCL']) | (df_EWMA['z'] < df_EWMA['LCL']), df_EWMA['z'], np.nan)
 
@@ -736,7 +772,7 @@ class ControlCharts:
             plt.step(df_EWMA.index, df_EWMA['LCL'], color='firebrick', linewidth=1, where='mid')
             # Plot the chart
             plt.title('EWMA chart of %s (lambda=%.2f)' % (col_name, lambda_))
-            plt.plot(df_EWMA['z'], color='b', linestyle='-', marker='o')
+            plt.plot(df_EWMA['z'], color='mediumblue', linestyle='-', marker='o')
             # add the values of the control limits on the right side of the plot
             plt.text(len(df_EWMA)+.5, df_EWMA['UCL'].iloc[-1], 'UCL = {:.3f}'.format(df_EWMA['UCL'].iloc[-1]), verticalalignment='center')
             plt.text(len(df_EWMA)+.5, df_EWMA['CL'].iloc[-1], 'CL = {:.3f}'.format(df_EWMA['CL'].iloc[-1]), verticalalignment='center')
@@ -888,7 +924,7 @@ class ControlCharts:
 
         return sample_mean
 
-    def P(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
+    def P(original_df, defects_col, subgroup_size, L=3, subset_size=None, known_params=None, plotit=True):
 
         '''
         This function plots the P chart of a DataFrame
@@ -905,7 +941,9 @@ class ControlCharts:
             The name of the column in the DataFrame that contains the subgroup size 
             OR an int equal to the size of the subgroup. 
             If subgroup_size is 1, the function will assume that the defects_col contains the proportion of defects.
-        sample_size : int
+        L : float, optional
+            The number of standard deviations. The default is 3.
+        subset_size : int
             The number of rows to be used for the P chart. Default is None and all rows are used.
         known_params : float, optional
             The value of the mean proportion. The default is None.
@@ -944,8 +982,8 @@ class ControlCharts:
         # UCL, LCL, CL
         original_df['std_dev'] = stdev
         original_df['P_CL'] = mean
-        original_df['P_UCL'] = original_df['P_CL'] + K * original_df['std_dev']
-        original_df['P_LCL'] = original_df['P_CL'] - K * original_df['std_dev']
+        original_df['P_UCL'] = original_df['P_CL'] + L * original_df['std_dev']
+        original_df['P_LCL'] = original_df['P_CL'] - L * original_df['std_dev']
         original_df['P_LCL'] = original_df['P_LCL'].clip(lower=0)  # LCL cannot be <0
         original_df['P_TEST1'] = np.where((original_df['p'] > original_df['P_UCL']) | (original_df['p'] < original_df['P_LCL']), original_df['p'], np.nan)
 
@@ -977,7 +1015,7 @@ class ControlCharts:
 
         return original_df
     
-    def NP(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
+    def NP(original_df, defects_col, subgroup_size, L=3, subset_size=None, known_params=None, plotit=True):
 
         '''
         This function plots the NP chart of a DataFrame
@@ -991,7 +1029,9 @@ class ControlCharts:
             The name of the column in the DataFrame that contains the number of defects.
         subgroup_size : int
             int equal to the size of the subgroup. 
-        sample_size : int
+        L : float, optional
+            The number of standard deviations. The default is 3.
+        subset_size : int
             The number of rows to be used for the NP chart. Default is None and all rows are used.
         known_params : float, optional
             The value of the mean proportion. The default is None.
@@ -1014,18 +1054,18 @@ class ControlCharts:
 
         # Calculate the control limits
         original_df['NP_CL'] = subgroup_size * p_hat
-        original_df['NP_UCL'] = original_df['NP_CL'] + K * np.sqrt(subgroup_size * p_hat * (1 - p_hat))
-        original_df['NP_LCL'] = np.maximum(0, original_df['NP_CL'] - K * np.sqrt(subgroup_size * p_hat * (1 - p_hat)))
+        original_df['NP_UCL'] = original_df['NP_CL'] + L * np.sqrt(subgroup_size * p_hat * (1 - p_hat))
+        original_df['NP_LCL'] = np.maximum(0, original_df['NP_CL'] - L * np.sqrt(subgroup_size * p_hat * (1 - p_hat)))
         original_df['NP_TEST1'] = np.where((original_df[defects_col] > original_df['NP_UCL']) | (original_df[defects_col] < original_df['NP_LCL']), original_df[defects_col], np.nan)
         
         if plotit:
             plt.figure()
-            plt.plot(original_df[defects_col], marker='o', linestyle='-', color='blue', label='Defectives per Sample')
+            plt.plot(original_df[defects_col], marker='o', linestyle='-', color='mediumblue', label='Defectives per Sample')
             plt.plot(original_df['NP_CL'], color='g', linestyle='-', linewidth=1)
             plt.plot(original_df['NP_UCL'], color='firebrick', linestyle='-', linewidth=1)
             plt.plot(original_df['NP_LCL'], color='firebrick', linestyle='-', linewidth=1)
             plt.plot(original_df['NP_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
-            plt.title('np-control chart')
+            plt.title('np chart of %s' % defects_col)
             plt.xlabel('Sample')
             plt.ylabel('Defectives per Sample')
             # add the values of the control limits on the right side of the plot
@@ -1042,7 +1082,7 @@ class ControlCharts:
         return original_df
     
     @staticmethod
-    def C(original_df, defects_col, K=3, subset_size=None, known_params=None, plotit=True):
+    def C(original_df, defects_col, L=3, subset_size=None, known_params=None, plotit=True):
         '''
         This function plots the C chart of a DataFrame
         and returns the DataFrame with the control limits and alarm rules.
@@ -1053,7 +1093,7 @@ class ControlCharts:
             The DataFrame that contains the data.
         defects_col : str
             The name of the column in the DataFrame that contains the number of defects per sample.
-        K : int, optional
+        L : float, optional
             The number of standard deviations. The default is 3.
         subset_size : int, optional
             The number of rows to be used for the C chart. Default is None and all rows are used.
@@ -1094,9 +1134,9 @@ class ControlCharts:
         c_bar = known_params if known_params is not None else df[defects_col].iloc[:subset_size].mean()
 
         # Calculate control limits
-        df['C_UCL'] = c_bar + K * np.sqrt(c_bar)
+        df['C_UCL'] = c_bar + L * np.sqrt(c_bar)
         df['C_CL'] = c_bar
-        df['C_LCL'] = max(0, c_bar - K * np.sqrt(c_bar))
+        df['C_LCL'] = max(0, c_bar - L * np.sqrt(c_bar))
 
         # Define alarm rule (Test 1: points beyond control limits)
         df['C_TEST1'] = np.where(
@@ -1129,7 +1169,7 @@ class ControlCharts:
         return df
     
     @staticmethod
-    def U(original_df, defects_col, subgroup_size, K=3, subset_size=None, known_params=None, plotit=True):
+    def U(original_df, defects_col, subgroup_size, L=3, subset_size=None, known_params=None, plotit=True):
         '''
         This function plots the U chart of a DataFrame
         and returns the DataFrame with the control limits and alarm rules.
@@ -1143,7 +1183,7 @@ class ControlCharts:
         subgroup_size : str or int
             The name of the column in the DataFrame that contains the subgroup size
             OR an int equal to the size of the subgroup.
-        K : int, optional
+        L : float, optional
             The number of standard deviations. The default is 3.
         subset_size : int, optional
             The number of rows to be used for the U chart. Default is None and all rows are used.
@@ -1205,9 +1245,9 @@ class ControlCharts:
                 u_bar = df['u'].iloc[:subset_size].mean()
 
         # Calculate control limits (variable width when subgroup size is a column)
-        df['U_UCL'] = u_bar + K * np.sqrt(u_bar / n)
+        df['U_UCL'] = u_bar + L * np.sqrt(u_bar / n)
         df['U_CL'] = u_bar
-        df['U_LCL'] = (u_bar - K * np.sqrt(u_bar / n)).clip(lower=0)
+        df['U_LCL'] = (u_bar - L * np.sqrt(u_bar / n)).clip(lower=0)
 
         # Define alarm rule (Test 1: points beyond control limits)
         df['U_TEST1'] = np.where(
