@@ -2,14 +2,15 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-VERSION = '0.2.1'
 DESCRIPTION = 'Quality data analysis toolkit'
 LONG_DESCRIPTION = 'A package to create charts and models for statistical process control.'
 BASE_DIR = Path(__file__).resolve().parent
+version_ns = {}
+exec((BASE_DIR / 'qdatoolkit' / '_version.py').read_text(encoding='utf-8'), version_ns)
 
 setup(
     name='qda-toolkit',
-    version=VERSION,
+    version=version_ns['__version__'],
     author="IC Labs (Matteo Bugatti)",
     author_email="<matteo.bugatti@polimi.it>",
     description=DESCRIPTION,
