@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 import qdatoolkit as qda
 
 
@@ -11,12 +12,72 @@ def test_CC_XbarR():
     assert {'Xbar_UCL', 'Xbar_CL', 'Xbar_LCL', 'R_UCL', 'R_CL', 'R_LCL'}.issubset(cc.columns)
 
 
+def test_CC_IMRR():
+    np.random.seed(0)
+    data = np.random.normal(loc=10, scale=2, size=(20, 5))
+    data = pd.DataFrame(data, columns=['A', 'B', 'C', 'D', 'E'])
+    cc = qda.ControlCharts.IMRR(data, plotit=False)
+    assert {'I_UCL', 'I_CL', 'I_LCL', 'MR_UCL', 'MR_CL', 'MR_LCL', 'R_UCL', 'R_CL', 'R_LCL'}.issubset(cc.columns)
+    pd.testing.assert_series_equal(cc['sample_mean'], data.mean(axis=1), check_names=False)
+    pd.testing.assert_series_equal(cc['MR'], data.mean(axis=1).diff().abs(), check_names=False)
+
+
 def test_CC_XbarS():
     np.random.seed(0)
     data = np.random.normal(loc=10, scale=2, size=(20, 5))
     data = pd.DataFrame(data, columns=['A', 'B', 'C', 'D', 'E'])
     cc = qda.ControlCharts.XbarS(data, plotit=False)
     assert {'Xbar_UCL', 'Xbar_CL', 'Xbar_LCL', 'S_UCL', 'S_CL', 'S_LCL'}.issubset(cc.columns)
+
+
+def test_CC_XbarS_long_format():
+    wide = pd.DataFrame([
+        [9.8, 10.1, 10.0],
+        [10.3, 10.5, 10.1],
+        [9.7, 9.9, 10.2],
+    ])
+    long = pd.DataFrame({
+        'sample_id': np.repeat(['a', 'b', 'c'], wide.shape[1]),
+        'value': wide.to_numpy().ravel(),
+    })
+
+    expected = qda.ControlCharts.XbarS(wide, plotit=False)
+    by_id = qda.ControlCharts.XbarS(
+        long,
+        col_name='value',
+        id_column='sample_id',
+        plotit=False,
+    )
+    by_size = qda.ControlCharts.XbarS(
+        long[['value']],
+        col_name='value',
+        sample_size=wide.shape[1],
+        plotit=False,
+    )
+
+    result_columns = [
+        'sample_mean', 'sample_std', 'Xbar_UCL', 'Xbar_CL', 'Xbar_LCL',
+        'S_UCL', 'S_CL', 'S_LCL',
+    ]
+    pd.testing.assert_frame_equal(
+        by_id[result_columns], expected[result_columns], check_names=False
+    )
+    pd.testing.assert_frame_equal(by_size[result_columns], expected[result_columns])
+
+
+def test_CC_XbarS_rejects_unequal_subgroup_sizes():
+    data = pd.DataFrame({
+        'sample_id': ['a', 'a', 'a', 'b', 'b'],
+        'value': [1.0, 1.1, 0.9, 1.2, 1.3],
+    })
+
+    with pytest.raises(ValueError, match='same number of measurements'):
+        qda.ControlCharts.XbarS(
+            data,
+            col_name='value',
+            id_column='sample_id',
+            plotit=False,
+        )
 
 
 def test_CC_I():

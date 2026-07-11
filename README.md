@@ -13,6 +13,7 @@ The QDA module contains several classes, each with its own functionality:
 1. **ControlCharts**: This class provides several methods for creating control charts (Shewhart, small shifts and multivariate CC):
     - `IMR`: This method creates an Individual and Moving Range (IMR) control chart.
     - `XbarR`: This method creates an X-bar and R control chart.
+    - `IMRR`: This method creates Individual, Moving Range, and R control charts from subgrouped data.
     - `XbarS`: This method creates an X-bar and S control chart.
     - `EWMA`: This method creates the exponentially weighted moving average (EWMA) control chart for detecting small shifts. 
     - `CUSUM`: This method creates the cumulative sum (CUSUM) control chart for detecting small shifts.

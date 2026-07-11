@@ -342,7 +342,7 @@ class ControlCharts:
         return df
     
     @staticmethod
-    def XbarR(original_df, K = 3, mean = None, subset_size = None, plotit = True):
+    def XbarR(original_df, col_name = None, id_column = None, sample_size = None, K = 3, mean = None, sigma = None, subset_size = None, plotit = True):
         '''
         This function plots the Xbar-R charts of a DataFrame 
         and returns the DataFrame with the control limits and alarm rules.
@@ -350,13 +350,23 @@ class ControlCharts:
         Parameters
         ----------
         original_df : DataFrame
-            The DataFrame that contains the data.
+            The DataFrame that contains the data. 
+            Data must be provided in a wide format (m, n) where each row is a sample and each column is a measurement.
+            Alternatively, if the data is in a long format (m*n, 1 or 2), the id_column or sample_size parameters must be provided. 
+        col_name : str, optional
+            The name of the column that contains the measurements. Only required if the data is in a long format.
+        id_column : str, optional
+            The name of the column that contains the IDs of the samples. Only required if the data is in a long format and the sample_size is not provided.
+        sample_size : int, optional
+            The size of each sample. Only required if the data is in a long format and the id_column is not provided.
         K : int, optional
             The number of standard deviations. The default is 3.
         mean : float, optional
             Input the mean of the population. Otherwise, the mean of the sample will be used.
+        sigma : float, optional
+            Input the standard deviation of the population. Otherwise, the range will be used. 
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            The number of samples to be used for the XbarR chart. Default is None and all samples are used.
 
         Returns
         -------
@@ -366,8 +376,38 @@ class ControlCharts:
         # get the shape of the DataFrame
         m, n = original_df.shape
 
-        if n < 2:
-            raise ValueError('The DataFrame must contain at least 2 columns.')
+        if n < 2 and sample_size is None:
+            raise ValueError('The DataFrame must contain at least 2 columns or the sample_size parameter must be provided.')
+        
+        if col_name is None and (id_column is not None or sample_size is not None):
+            raise ValueError('If the data is in a long format, the col_name parameter must be provided.')
+        elif col_name is not None and (id_column is None and sample_size is None):
+            raise ValueError('If the data is in a long format, either the id_column or sample_size parameter must be provided.')
+
+        if id_column is not None:
+            # Convert long format to wide format
+            original_df = (
+                        original_df.assign(variable=original_df.groupby(id_column).cumcount() + 1)
+                        .pivot(index=id_column, columns='variable', values=col_name)
+                        .rename(columns=lambda c: f"{col_name}_{c}")
+            )
+            # Drop the index name
+            original_df = original_df.reset_index(drop=True)
+            # Check for NaN values in the new DataFrame
+            if original_df.isnull().sum().sum() > 0:
+                raise ValueError("The DataFrame contains NaN values after pivoting. Check the input data and ensure that each sample has the same number of measurements.")
+        elif sample_size is not None:
+            # check if the number of rows in the DataFrame is a multiple of the sample size
+            if len(original_df) % sample_size != 0:
+                raise ValueError('The number of rows in the DataFrame must be a multiple of the sample size.')
+            # Convert long format to wide format
+            original_df = pd.DataFrame(
+                original_df[col_name].to_numpy().reshape(-1, sample_size),
+                columns=[f"{col_name}_{i+1}" for i in range(sample_size)]
+            )
+
+        # get the shape of the DataFrame after conversion (if any)
+        m, n = original_df.shape
 
         # Calculate the constants
         A2 = constants.getA2(n, K)
@@ -392,16 +432,39 @@ class ControlCharts:
         else:
             Xbar_mean = mean
 
+        if sigma is None:
+            
+            R_mean = data_XR['sample_range'].iloc[:subset_size].mean()
+            
+            # Now we can compute the CL, UCL and LCL for Xbar and R
+            data_XR['Xbar_CL'] = Xbar_mean
+            data_XR['Xbar_UCL'] = Xbar_mean + A2 * R_mean
+            data_XR['Xbar_LCL'] = Xbar_mean - A2 * R_mean
+
+            data_XR['R_CL'] = R_mean
+            data_XR['R_UCL'] = D4 * R_mean
+            data_XR['R_LCL'] = D3 * R_mean
+
+        else:
+
+            R_mean = sigma * constants.getd2(n)
+
+            # Now we can compute the CL, UCL and LCL for Xbar and R
+            data_XR['Xbar_CL'] = Xbar_mean
+            data_XR['Xbar_UCL'] = Xbar_mean + K * sigma / np.sqrt(n)
+            data_XR['Xbar_LCL'] = Xbar_mean - K * sigma / np.sqrt(n)
+
+            data_XR['R_CL'] = R_mean
+            data_XR['R_UCL'] = D4 * R_mean
+            data_XR['R_LCL'] = D3 * R_mean            
+            
+            
+
+
+
+
         R_mean = data_XR['sample_range'].iloc[:subset_size].mean()
 
-        # Now we can compute the CL, UCL and LCL for Xbar and R
-        data_XR['Xbar_CL'] = Xbar_mean
-        data_XR['Xbar_UCL'] = Xbar_mean + A2 * R_mean
-        data_XR['Xbar_LCL'] = Xbar_mean - A2 * R_mean
-
-        data_XR['R_CL'] = R_mean
-        data_XR['R_UCL'] = D4 * R_mean
-        data_XR['R_LCL'] = D3 * R_mean
 
         # Define columns for the alarms
         data_XR['Xbar_TEST1'] = np.where((data_XR['sample_mean'] > data_XR['Xbar_UCL']) | 
@@ -447,12 +510,14 @@ class ControlCharts:
             _show_plot()
 
         return data_XR
-    
+
     @staticmethod
-    def XbarS(original_df, K = 3, mean = None, sigma = None, subset_size = None, plotit = True):
+    def IMRR(original_df, K = 3, mean = None, sigma_between = None, sigma_within = None, subset_size = None, plotit = True):
         '''
-        This function plots the Xbar-S charts of a DataFrame 
+        This function plots the I-MR-R charts of a DataFrame 
         and returns the DataFrame with the control limits and alarm rules.
+        The I and MR charts are based on the mean of each row, while the R
+        chart is based on the range of each row.
 
         Parameters
         ----------
@@ -462,10 +527,162 @@ class ControlCharts:
             The number of standard deviations. The default is 3.
         mean : float, optional
             Input the mean of the population. Otherwise, the mean of the sample will be used.
+        sigma_between : float, optional
+            Input the between-group standard deviation of the population. Otherwise, the moving range will be used.
+        sigma_within : float, optional
+            Input the within-group standard deviation of the population. Otherwise, the range will be used.
+        subset_size : int, optional
+            The number of rows to be used for the IMRR chart. Default is None and all rows are used.
+
+        Returns
+        -------
+        data_IMRR : DataFrame
+            The DataFrame with the control limits and alarm rules.
+        '''
+        # get the shape of the DataFrame
+        m, n = original_df.shape
+
+        if n < 2:
+            raise ValueError('The DataFrame must contain at least 2 columns.')
+
+        # Calculate the constants
+        d2 = constants.getd2(2)
+        D4_MR = constants.getD4(2, K)
+        D3_MR = constants.getD3(2, K)
+        D4_R = constants.getD4(n, K)
+        D3_R = constants.getD3(n, K)
+
+        if subset_size is None:
+            subset_size = len(original_df)
+        elif subset_size > len(original_df):
+            raise ValueError('The subset size must be less than the number of rows in the DataFrame.')
+
+        # Create a copy of the original DataFrame
+        data_IMRR = original_df.copy()
+
+        # Add a column with the mean of the rows
+        data_IMRR['sample_mean'] = original_df.mean(axis=1)
+        # Add a column with the range of the rows
+        data_IMRR['sample_range'] = original_df.max(axis=1) - original_df.min(axis=1)
+        # Add the moving range of the row means
+        data_IMRR['MR'] = data_IMRR['sample_mean'].diff().abs()
+
+        if mean is None:
+            I_mean = data_IMRR['sample_mean'].iloc[:subset_size].mean()
+        else:
+            I_mean = mean
+
+        if sigma_within is None:
+            R_mean = data_IMRR['sample_range'].iloc[:subset_size].mean()
+            sigma_within = R_mean / constants.getd2(n)
+        else:
+            R_mean = sigma_within * constants.getd2(n)
+
+        if sigma_between is None:
+            MR_mean = data_IMRR['MR'].iloc[:subset_size].mean()
+        else:
+            s2_MR = sigma_between ** 2 + sigma_within ** 2 / n
+            MR_mean = np.sqrt(s2_MR) * d2
+
+        # Now we can compute the CL, UCL and LCL for I, MR and R
+        data_IMRR['I_CL'] = I_mean
+        data_IMRR['I_UCL'] = I_mean + K * MR_mean / d2
+        data_IMRR['I_LCL'] = I_mean - K * MR_mean / d2
+
+        data_IMRR['MR_CL'] = MR_mean
+        data_IMRR['MR_UCL'] = D4_MR * MR_mean
+        data_IMRR['MR_LCL'] = D3_MR * MR_mean
+
+        data_IMRR['R_CL'] = R_mean
+        data_IMRR['R_UCL'] = D4_R * R_mean
+        data_IMRR['R_LCL'] = D3_R * R_mean
+
+        # Define columns for the alarms
+        data_IMRR['I_TEST1'] = np.where((data_IMRR['sample_mean'] > data_IMRR['I_UCL']) | 
+                (data_IMRR['sample_mean'] < data_IMRR['I_LCL']), data_IMRR['sample_mean'], np.nan)
+        data_IMRR['MR_TEST1'] = np.where((data_IMRR['MR'] > data_IMRR['MR_UCL']) | 
+                (data_IMRR['MR'] < data_IMRR['MR_LCL']), data_IMRR['MR'], np.nan)
+        data_IMRR['R_TEST1'] = np.where((data_IMRR['sample_range'] > data_IMRR['R_UCL']) | 
+                (data_IMRR['sample_range'] < data_IMRR['R_LCL']), data_IMRR['sample_range'], np.nan)
+
+        if plotit:
+            fig, ax = plt.subplots(3, 1, sharex=True)
+            fig.suptitle(('I-MR-R charts'))
+            ax[0].plot(data_IMRR['sample_mean'], color='mediumblue', linestyle='--', marker='o')
+            ax[0].plot(data_IMRR['I_UCL'], color='firebrick', linewidth=1)
+            ax[0].plot(data_IMRR['I_CL'], color='g', linewidth=1)
+            ax[0].plot(data_IMRR['I_LCL'], color='firebrick', linewidth=1)
+            ax[0].set_ylabel('Sample Mean')
+            # add the values of the control limits on the right side of the plot
+            ax[0].text(len(data_IMRR)+.5, data_IMRR['I_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_IMRR['I_UCL'].iloc[0]), verticalalignment='center')
+            ax[0].text(len(data_IMRR)+.5, data_IMRR['I_CL'].iloc[0], 'CL = {:.3f}'.format(data_IMRR['I_CL'].iloc[0]), verticalalignment='center')
+            ax[0].text(len(data_IMRR)+.5, data_IMRR['I_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_IMRR['I_LCL'].iloc[0]), verticalalignment='center')
+            # highlight the points that violate the alarm rules
+            ax[0].plot(data_IMRR['I_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+
+            ax[1].plot(data_IMRR['MR'], color='mediumblue', linestyle='--', marker='o')
+            ax[1].plot(data_IMRR['MR_UCL'], color='firebrick', linewidth=1)
+            ax[1].plot(data_IMRR['MR_CL'], color='g', linewidth=1)
+            ax[1].plot(data_IMRR['MR_LCL'], color='firebrick', linewidth=1)
+            ax[1].set_ylabel('Moving Range')
+            # add the values of the control limits on the right side of the plot
+            ax[1].text(len(data_IMRR)+.5, data_IMRR['MR_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_IMRR['MR_UCL'].iloc[0]), verticalalignment='center')
+            ax[1].text(len(data_IMRR)+.5, data_IMRR['MR_CL'].iloc[0], 'CL = {:.3f}'.format(data_IMRR['MR_CL'].iloc[0]), verticalalignment='center')
+            ax[1].text(len(data_IMRR)+.5, data_IMRR['MR_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_IMRR['MR_LCL'].iloc[0]), verticalalignment='center')
+            # highlight the points that violate the alarm rules
+            ax[1].plot(data_IMRR['MR_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+
+            ax[2].plot(data_IMRR['sample_range'], color='mediumblue', linestyle='--', marker='o')
+            ax[2].plot(data_IMRR['R_UCL'], color='firebrick', linewidth=1)
+            ax[2].plot(data_IMRR['R_CL'], color='g', linewidth=1)
+            ax[2].plot(data_IMRR['R_LCL'], color='firebrick', linewidth=1)
+            ax[2].set_ylabel('Sample Range')
+            ax[2].set_xlabel('Sample Number')
+            # add the values of the control limits on the right side of the plot
+            ax[2].text(len(data_IMRR)+.5, data_IMRR['R_UCL'].iloc[0], 'UCL = {:.3f}'.format(data_IMRR['R_UCL'].iloc[0]), verticalalignment='center')
+            ax[2].text(len(data_IMRR)+.5, data_IMRR['R_CL'].iloc[0], 'CL = {:.3f}'.format(data_IMRR['R_CL'].iloc[0]), verticalalignment='center')
+            ax[2].text(len(data_IMRR)+.5, data_IMRR['R_LCL'].iloc[0], 'LCL = {:.3f}'.format(data_IMRR['R_LCL'].iloc[0]), verticalalignment='center')
+            # highlight the points that violate the alarm rules
+            ax[2].plot(data_IMRR['R_TEST1'], linestyle='none', marker='s', color='firebrick', markersize=10)
+            # set the x-axis limits
+            ax[2].set_xlim(-1, len(data_IMRR))
+
+            if subset_size < len(original_df):
+                ax[0].axvline(x=subset_size-.5, color='k', linestyle='--')
+                ax[1].axvline(x=subset_size-.5, color='k', linestyle='--')
+                ax[2].axvline(x=subset_size-.5, color='k', linestyle='--')
+
+            plt.tight_layout()
+            _show_plot()
+
+        return data_IMRR
+    
+    @staticmethod
+    def XbarS(original_df, col_name = None, id_column = None, sample_size = None, K = 3, mean = None, sigma = None, subset_size = None, plotit = True):
+        '''
+        This function plots the Xbar-S charts of a DataFrame 
+        and returns the DataFrame with the control limits and alarm rules.
+
+        Parameters
+        ----------
+        original_df : DataFrame
+            The DataFrame that contains the data.
+            Data must be provided in a wide format (m, n) where each row is a sample and each column is a measurement.
+            Alternatively, if the data is in a long format (m*n, 1 or 2), the id_column or sample_size parameters must be provided.
+        col_name : str, optional
+            The name of the column that contains the measurements. Only required if the data is in a long format.
+        id_column : str, optional
+            The name of the column that contains the IDs of the samples. Only required if the data is in a long format and the sample_size is not provided.
+        sample_size : int, optional
+            The size of each sample. Only required if the data is in a long format and the id_column is not provided.
+        K : int, optional
+            The number of standard deviations. The default is 3.
+        mean : float, optional
+            Input the mean of the population. Otherwise, the mean of the sample will be used.
         sigma : float, optional
             Input the standard deviation of the population. Otherwise, the standard deviation of the sample will be used.
         subset_size : int, optional
-            The number of rows to be used for the IMR chart. Default is None and all rows are used.
+            The number of samples to be used for the XbarS chart. Default is None and all samples are used.
 
         Returns
         -------
@@ -475,8 +692,38 @@ class ControlCharts:
         # get the shape of the DataFrame
         m, n = original_df.shape
 
-        if n < 2:
-            raise ValueError('The DataFrame must contain at least 2 columns.')
+        if n < 2 and sample_size is None:
+            raise ValueError('The DataFrame must contain at least 2 columns or the sample_size parameter must be provided.')
+
+        if col_name is None and (id_column is not None or sample_size is not None):
+            raise ValueError('If the data is in a long format, the col_name parameter must be provided.')
+        elif col_name is not None and (id_column is None and sample_size is None):
+            raise ValueError('If the data is in a long format, either the id_column or sample_size parameter must be provided.')
+
+        if id_column is not None:
+            # Convert long format to wide format
+            original_df = (
+                        original_df.assign(variable=original_df.groupby(id_column).cumcount() + 1)
+                        .pivot(index=id_column, columns='variable', values=col_name)
+                        .rename(columns=lambda c: f"{col_name}_{c}")
+            )
+            # Drop the index name
+            original_df = original_df.reset_index(drop=True)
+            # Check for NaN values in the new DataFrame
+            if original_df.isnull().sum().sum() > 0:
+                raise ValueError("The DataFrame contains NaN values after pivoting. Check the input data and ensure that each sample has the same number of measurements.")
+        elif sample_size is not None:
+            # check if the number of rows in the DataFrame is a multiple of the sample size
+            if len(original_df) % sample_size != 0:
+                raise ValueError('The number of rows in the DataFrame must be a multiple of the sample size.')
+            # Convert long format to wide format
+            original_df = pd.DataFrame(
+                original_df[col_name].to_numpy().reshape(-1, sample_size),
+                columns=[f"{col_name}_{i+1}" for i in range(sample_size)]
+            )
+
+        # get the shape of the DataFrame after conversion (if any)
+        m, n = original_df.shape
         
         # Choose the data subset to be used for the control limits
         if subset_size is None:
@@ -865,6 +1112,7 @@ class ControlCharts:
                 UCL2 = UCL1
             else:
                 # short range estimator
+                print('The short range estimator is used to calculate the covariance matrix...')
                 # Create the V matrix using the first m samples
                 V = sample_mean[col_names].iloc[:m].diff().dropna()
 
@@ -872,9 +1120,12 @@ class ControlCharts:
                 S = 1/2 * V.transpose().dot(V) / (m-1)
 
                 # Compute the UCL for the Hotelling T2 statistic with the beta distribution
-                print('The UCL is calculated using the BETA distribution.')
+                print('     The UCL_p1 is calculated using the BETA distribution.')
                 UCL1 = ((m-1)**2)/m*stats.beta.ppf(1 - alpha, p/2, (m-p-1)/2)
-                UCL2 = (p*(m+1)*(m-1))/(m*(m-p))*stats.f.ppf(1-alpha, p, m - p)
+                # Compute the UCL for the Hotelling T2 statistic with the F distribution
+                if m < len(original_df)/n:
+                    print('     The UCL_p2 is calculated using the F distribution.')
+                    UCL2 = (p*(m+1)*(m-1))/(m*(m-p))*stats.f.ppf(1-alpha, p, m - p)
 
         else:   
             S = varcov

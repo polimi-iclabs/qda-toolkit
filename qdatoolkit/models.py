@@ -667,15 +667,17 @@ class Assumptions:
             
         self.data = data.dropna()
 
-    def normality(self, qqplot=True, test='anderson-darling'):
+    def normality(self, plotit=True, test='anderson-darling', print_results=True):
         """Test the normality of the data.
 
         Parameters
         ----------
-        qqplot : bool, optional
+        plotit : bool, optional
             If True, plots the Q-Q plot. Default is True.
         test : str, optional
             Type of test to perform: 'shapiro-wilk' or 'anderson-darling'. Default is 'anderson-darling'.
+        print_results : bool, optional
+            If True, prints the test statistic and p-value. Default is True.
 
         Returns
         -------
@@ -685,7 +687,7 @@ class Assumptions:
             P-value of the test.
         """
 
-        if qqplot:
+        if plotit:
             stats.probplot(self.data, dist="norm", plot=plt)
             _show_plot()
 
@@ -705,19 +707,18 @@ class Assumptions:
         else:
             raise ValueError("Invalid test type. Choose 'shapiro-wilk' or 'anderson-darling'.")
 
-        print(f'{test.capitalize()} test statistic = {stat:.3f}')
-        print(f'{test.capitalize()} test p-value = {p_value:.3f}')
+        if print_results:
+            print(f'{test.capitalize()} test statistic = {stat:.3f}')
+            print(f'{test.capitalize()} test p-value = {p_value:.3f}')
         return stat, p_value
 
-    def independence(self, plotit=True, ac_test='runs', lag=None, nlags=None):
+    def independence(self, plotit=True, ac_test='runs', lag=None, nlags=None, print_results=True):
         """Test the independence of the data.
 
         Parameters
         ----------
-        plots : bool, optional
+        plotit : bool, optional
             If True, plots the ACF and PACF. Default is True.
-        runs_test : bool, optional
-            If True, performs the runs test. Default is True.
         ac_test : str, optional
             Type of autocorrelation test to perform: 'runs', 'bartlett' or 'lbq'. Default is 'runs'.
         lag : int, optional
@@ -725,7 +726,9 @@ class Assumptions:
             Must be specified if ac_test is 'bartlett' or 'lbq'.
         nlags : int, optional
             The number of lags to use for the ACF and PACF plots. Default is None.
-
+        print_results : bool, optional
+            If True, prints the test statistic and p-value. Default is True.
+            
         Returns
         -------
         stat : float
@@ -752,21 +755,24 @@ class Assumptions:
 
         if ac_test == 'runs':
             stat, p_value = runstest_1samp(self.data, correction=False)
-            print(f'Runs test statistic = {stat:.3f}')
-            print(f'Runs test p-value = {p_value:.3f}\n')
+            if print_results:
+                print(f'Runs test statistic = {stat:.3f}')
+                print(f'Runs test p-value = {p_value:.3f}\n')
 
         elif ac_test == 'bartlett':
             rk = acf_values[lag]
             stat = rk
             p_value = 2 * (1 - stats.norm.cdf(abs(stat) * np.sqrt(len(self.data))))
-            print(f'Bartlett test statistic = {stat:.3f}')
-            print(f'Bartlett test p-value = {p_value:.3f}')
+            if print_results:
+                print(f'Bartlett test statistic = {stat:.3f}')
+                print(f'Bartlett test p-value = {p_value:.3f}')
             
         elif ac_test == 'lbq':
             stat = stat_lbq[lag - 1]
             p_value = 1 - stats.chi2.cdf(stat, lag)
-            print(f'LBQ test statistic = {stat:.3f}')
-            print(f'LBQ test p-value = {p_value:.3f}')
+            if print_results:
+                print(f'LBQ test statistic = {stat:.3f}')
+                print(f'LBQ test p-value = {p_value:.3f}')
 
         if plotit:
             fig, ax = plt.subplots(2, 1, figsize=(10, max(5, nlags // 15)))
@@ -779,7 +785,7 @@ class Assumptions:
 
         return stat, p_value
     
-    def all(self, norm_test='shapiro-wilk', ac_test='runs', lag=None, nlags=None, plotit=True):
+    def all(self, norm_test='shapiro-wilk', ac_test='runs', lag=None, nlags=None, plotit=True, print_results=True):
         
         # get how many columns the data has
         if isinstance(self.data, pd.DataFrame):
